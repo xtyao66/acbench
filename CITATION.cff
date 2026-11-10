@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use ACBench, please cite the work below."
-title: "ACBench: Auditing Feedback Scaffolds in LLM Performance Engineering"
+title: "ACBench: A Benchmark Suite for Auditing Retry and Profiling Feedback in LLM-Driven Code Optimization"
 abstract: >-
   ACBench is a benchmark and analysis suite for auditing retry and profiling
   feedback scaffolds in live-measured LLM performance-engineering loops over
@@ -22,8 +22,20 @@ keywords:
   - evaluation
 preferred-citation:
   type: conference-paper
-  title: "ACBench: Auditing Feedback Scaffolds in LLM Performance Engineering"
+  title: "ACBench: A Benchmark Suite for Auditing Retry and Profiling Feedback in LLM-Driven Code Optimization"
   authors:
-    - name: "ACBench Team"
+    - family-names: "Yao"
+      given-names: "Xiteng"
+    - family-names: "Chu"
+      given-names: "Ziyuan"
+    - family-names: "Tai"
+      given-names: "Feng"
+    - family-names: "Xue"
+      given-names: "Bangjie"
+    - family-names: "Hu"
+      given-names: "Yigong"
+    - family-names: "Herbordt"
+      given-names: "Martin"
+  collection-title: "2026 IEEE High Performance Extreme Computing Conference (HPEC)"
   year: 2026
-  url: "https://github.com/xtyao66/acbench"
+  url: "https://ieee-hpec.org/wp-content/uploads/2026/09/266.pdf"

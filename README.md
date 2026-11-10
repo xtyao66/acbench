@@ -23,16 +23,18 @@ changes.
 
 ## Citation
 
-If you use ACBench in your research, please cite:
+If you use ACBench in your research, please cite the HPEC 2026 paper
+([PDF](https://ieee-hpec.org/wp-content/uploads/2026/09/266.pdf)):
 
 ```bibtex
-@misc{acbench2026,
-  title  = {ACBench: Agentic Cloud Benchmark},
-  author = {ACBench Team},
-  year   = {2026},
-  note   = {A reproducible benchmark for code repair, ops incident analysis,
-            and combined cloud agent workflows},
-  url    = {https://github.com/xtyao66/acbench}
+@inproceedings{yao2026acbench,
+  title     = {{ACBench}: A Benchmark Suite for Auditing Retry and Profiling
+               Feedback in {LLM}-Driven Code Optimization},
+  author    = {Yao, Xiteng and Chu, Ziyuan and Tai, Feng and Xue, Bangjie and
+               Hu, Yigong and Herbordt, Martin},
+  booktitle = {2026 IEEE High Performance Extreme Computing Conference (HPEC)},
+  year      = {2026},
+  url       = {https://ieee-hpec.org/wp-content/uploads/2026/09/266.pdf}
 }
 ```
 
