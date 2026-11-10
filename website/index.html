@@ -18,7 +18,6 @@
           <span>ACBench</span>
         </a>
         <div class="nav-links">
-          <a href="#leaderboard">Leaderboard</a>
           <a href="#overview">Overview</a>
           <a href="#tasks">Tasks</a>
           <a href="#results">Results</a>
@@ -90,41 +89,9 @@
           <span>Combined Tasks</span>
         </div>
         <div class="stat">
-          <strong>2</strong>
+          <strong>3</strong>
           <span>Built-in Providers</span>
         </div>
-      </section>
-
-      <section id="leaderboard" class="section">
-        <div class="section-heading">
-          <h2>Leaderboard</h2>
-          <p>
-            Agent results measured with ACBench v0.1.0. Version 0.2.0 changed
-            how runs are scored (see the changelog), so these numbers are not
-            comparable with results from 0.2.0 or later.
-          </p>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Agent</th>
-                <th>Model</th>
-                <th>Code (%)</th>
-                <th>Ops (%)</th>
-                <th>Combined (%)</th>
-                <th>Avg (%)</th>
-                <th>Scenarios</th>
-              </tr>
-            </thead>
-            <tbody id="leaderboard-body"></tbody>
-          </table>
-        </div>
-        <p class="note">
-          ACBench reports build/test repair signals for code tasks and
-          detection/localization/repair rubric signals for ops tasks.
-        </p>
       </section>
 
       <section id="overview" class="section split">
@@ -158,7 +125,7 @@
           </div>
           <div class="metric-row">
             <span>Live Agent Implementations</span>
-            <strong>4</strong>
+            <strong>6</strong>
           </div>
         </div>
       </section>
@@ -187,7 +154,7 @@
             </dl>
           </article>
           <article class="category ops">
-            <div class="category-icon">âŒ?/div>
+            <div class="category-icon">&gt;_</div>
             <h3>Ops Incident Analysis</h3>
             <p>
               Agents analyze incident evidence such as logs, symptoms,
@@ -201,7 +168,7 @@
             </dl>
           </article>
           <article class="category combined">
-            <div class="category-icon">â‡?/div>
+            <div class="category-icon">&#8644;</div>
             <h3>Combined Workflows</h3>
             <p>
               Agents must first reason through operational symptoms, then apply
@@ -262,12 +229,12 @@
 
       <section id="citation" class="section citation">
         <h2>Citation</h2>
-        <p>If you use ACBench in your research, cite the project as:</p>
+        <p>If you use ACBench in your research, please cite:</p>
         <pre><code>@misc{acbench2026,
-  title  = {ACBench: Agentic Cloud Benchmark},
+  title  = {ACBench: Auditing Feedback Scaffolds in LLM Performance Engineering},
   author = {ACBench Team},
   year   = {2026},
-  note   = {Benchmark for code repair, ops analysis, and combined cloud agent tasks}
+  url    = {https://github.com/xtyao66/acbench}
 }</code></pre>
       </section>
     </main>
@@ -277,6 +244,6 @@
       <span>Standalone benchmark for agentic cloud engineering.</span>
     </footer>
 
-    <script src="main.js?v=d695ff5"></script>
+    <script src="main.js?v=20261110"></script>
   </body>
 </html>
