@@ -8,7 +8,7 @@
       name="description"
       content="ACBench is a standalone benchmark for evaluating AI agents on code repair, ops incident analysis, and combined cloud engineering tasks."
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261110" />
   </head>
   <body>
     <header class="site-header">
@@ -20,6 +20,7 @@
         <div class="nav-links">
           <a href="#overview">Overview</a>
           <a href="#tasks">Tasks</a>
+          <a href="#performance">Performance</a>
           <a href="#results">Results</a>
           <a href="#citation">Citation</a>
         </div>
@@ -39,14 +40,18 @@
             combined cloud engineering workflows.
           </p>
           <p class="authors">
-            ACBench Team
+            Xiteng Yao*, Ziyuan Chu*, Feng Tai*, Bangjie Xue, Yigong Hu,
+            Martin Herbordt<br />
+            Boston University &middot; *equal contribution
           </p>
           <p class="abstract">
             ACBench is a standalone benchmark built around reproducible
             engineering scenarios. It measures whether agents can patch buggy
             repositories, diagnose incident-style failures, and solve
             end-to-end tasks that require both operational reasoning and code
-            changes.
+            changes. A performance-optimization track, from the HPEC 2026
+            paper, studies how retries and profiling feedback affect
+            LLM-driven code optimization.
           </p>
           <div class="hero-actions" aria-label="Project links">
             <a
@@ -80,7 +85,7 @@
       <section class="stats-band" aria-label="Benchmark summary">
         <div class="stat">
           <strong>61</strong>
-          <span>Total Scenarios</span>
+          <span>Core Scenarios</span>
         </div>
         <div class="stat">
           <strong>18</strong>
@@ -95,8 +100,8 @@
           <span>Combined Tasks</span>
         </div>
         <div class="stat">
-          <strong>3</strong>
-          <span>Built-in Providers</span>
+          <strong>14</strong>
+          <span>Performance Tasks</span>
         </div>
       </section>
 
@@ -128,6 +133,10 @@
           <div class="metric-row">
             <span>OpenClaw Fixture Families</span>
             <strong>10</strong>
+          </div>
+          <div class="metric-row">
+            <span>Built-in Providers</span>
+            <strong>3</strong>
           </div>
           <div class="metric-row">
             <span>Live Agent Implementations</span>
@@ -190,6 +199,52 @@
         </div>
       </section>
 
+      <section id="performance" class="section split">
+        <div>
+          <h2>Performance Track</h2>
+          <p>
+            The HPEC 2026 paper studies a separate performance-optimization
+            track. Its 14 tasks come from merged optimization pull requests in
+            six production Go codebases: Prometheus, VictoriaMetrics, sonic,
+            fasthttp, go-json, and grpc-go. An agent proposes patches over four
+            rounds. Each patch is tested for correctness, and its measured
+            speedup is scored against the human reference patch.
+          </p>
+          <p>
+            The track compares three retry policies and seven
+            performance-feedback policies. The
+            <a class="text-link" href="https://ieee-hpec.org/wp-content/uploads/2026/09/266.pdf">paper</a>
+            reports the results, the
+            <a class="text-link" href="https://github.com/xtyao66/acbench/tree/main/paper/artifact">reproducibility artifact</a>
+            regenerates its tables and figures, and the
+            <a class="text-link" href="https://github.com/xtyao66/acbench/tree/main/volt">experiment harness</a>
+            contains the scripts that ran the experiments.
+          </p>
+        </div>
+        <div class="overview-panel">
+          <div class="metric-row">
+            <span>Validated Tasks</span>
+            <strong>14</strong>
+          </div>
+          <div class="metric-row">
+            <span>Go Codebases</span>
+            <strong>6</strong>
+          </div>
+          <div class="metric-row">
+            <span>Rounds per Run</span>
+            <strong>4</strong>
+          </div>
+          <div class="metric-row">
+            <span>Retry Policies</span>
+            <strong>3</strong>
+          </div>
+          <div class="metric-row">
+            <span>Performance-feedback Policies</span>
+            <strong>7</strong>
+          </div>
+        </div>
+      </section>
+
       <section id="results" class="section">
         <div class="section-heading">
           <h2>Key Results</h2>
@@ -237,7 +292,7 @@
         <h2>Citation</h2>
         <p>
           If you use ACBench in your research, please cite the
-          <a href="https://ieee-hpec.org/wp-content/uploads/2026/09/266.pdf">HPEC 2026 paper</a>:
+          <a class="text-link" href="https://ieee-hpec.org/wp-content/uploads/2026/09/266.pdf">HPEC 2026 paper</a>:
         </p>
         <pre><code>@inproceedings{yao2026acbench,
   title     = {{ACBench}: A Benchmark Suite for Auditing Retry and Profiling

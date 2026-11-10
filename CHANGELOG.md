@@ -4,6 +4,22 @@ All notable changes to ACBench are recorded here. Versions follow
 [Semantic Versioning](https://semver.org/); while the major version is 0, a minor
 release may change how runs are scored.
 
+## [Unreleased]
+
+### Website
+
+- The leaderboard of 0.1.0 results is removed. It returns when results exist
+  under the 0.2.0 scoring.
+- The page lists three built-in providers and six live agent classes, as the
+  README does, restores two corrupted task-card icons, names the authors and
+  adds a section on the performance-optimization track.
+
+### Documentation
+
+- The README, website and `CITATION.cff` cite the HPEC 2026 paper.
+- The README and the task-bank overview list the scenario sets outside the
+  61-scenario core suite.
+
 ## [0.2.0] - 2026-11-05
 
 This release fixes defects found in a repository-wide review. Several of them

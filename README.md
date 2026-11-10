@@ -60,6 +60,26 @@ OpenClaw-style synthetic incidents. These are not live checkouts of any upstream
 repository; they are stable local fixtures and rubrics derived from real issue
 patterns, so results are reproducible and independent of moving branches.
 
+### Other scenario sets
+
+The repository also holds scenario sets that are not part of the 61-scenario
+core suite:
+
+| Set | Scenarios | Location |
+| --- | ---: | --- |
+| Performance-optimization track (HPEC 2026 paper) | 14 validated, of 26 scenario files | `tasks/scenarios/perf/`, `manifests/perf_real_validated.json` |
+| Real-PR incident-to-fix scenarios | 14 | `tasks/scenarios/real/`, `manifests/real_prs.json` |
+| Local performance-incident fixtures | 17 | `tasks/scenarios/local/combined/`, `manifests/perf_combined.json`, `manifests/perf_measured.json` |
+
+The performance-optimization track is the subject of the HPEC 2026 paper. Its
+14 validated tasks come from merged optimization pull requests in six
+production Go codebases (Prometheus, VictoriaMetrics, sonic, fasthttp, go-json
+and grpc-go). An agent proposes patches over four rounds, and each test-passing
+patch is scored by its measured speedup against the human reference patch. The
+scripts that ran the paper's experiments are in [`volt/`](volt/README.md), and
+[`paper/artifact/`](paper/artifact/README.md) regenerates the paper's tables and
+figures from the archived results.
+
 ## Supported Agent Types
 
 ACBench has built-in integrations for live model providers:
@@ -406,7 +426,9 @@ Website files:
 
 - `website/index.html`: main page
 - `website/styles.css`: page styling
-- `website/main.js`: leaderboard rendering
+- `website/main.js`: leaderboard rows, written by `scripts/update_leaderboard.py`
+  (empty for now: the page shows no leaderboard until results exist under the
+  0.2.0 scoring)
 - `website/assets/acbench-hero.png`: hero image
 
 The site is static HTML/CSS/JS. A GitHub Actions workflow at

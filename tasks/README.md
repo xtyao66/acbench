@@ -102,6 +102,20 @@ Current counts:
 - `github_combined_openclaw_discord_plugin_routing_shortcuts`: Triage native Discord shortcuts falling into a plugin fallback and then fix dispatch order.
 - `github_combined_openclaw_discord_multi_account_shortcuts`: Triage multi-account Discord shortcut regressions and then fix the native dispatch path.
 
+## Other Scenario Sets
+
+These sets are not part of the 61-scenario core suite counted above:
+
+- `scenarios/perf/`: 26 real-PR Go optimization scenarios. The 14 that passed
+  gold validation form the performance-optimization track of the HPEC 2026
+  paper ([manifests/perf_real_validated.json](../manifests/perf_real_validated.json)).
+- `scenarios/real/`: 14 real-PR incident-to-fix scenarios
+  ([manifests/real_prs.json](../manifests/real_prs.json)).
+- `scenarios/local/combined/`: 17 local performance-incident fixtures alongside
+  the three core combined scenarios
+  ([manifests/perf_combined.json](../manifests/perf_combined.json),
+  [manifests/perf_measured.json](../manifests/perf_measured.json)).
+
 ## Related Files
 
 - scenario definitions: [tasks/scenarios](scenarios)

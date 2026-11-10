@@ -32,6 +32,12 @@ a {
   text-decoration: none;
 }
 
+.text-link {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .site-header {
   position: sticky;
   top: 0;
