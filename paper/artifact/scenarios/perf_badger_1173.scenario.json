@@ -1,0 +1,115 @@
+{
+ "scenario_id": "perf_badger_1173",
+ "title": "badger/skl: faster skiplist writes",
+ "mode": "combined",
+ "service": {
+  "application": "badger",
+  "service": "skl",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_badger_1173"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/dgraph-io/badger",
+  "base_commit": "8dfdd6d61f42b20bcadf38a9a344f98a859e8020",
+  "pr_url": "https://github.com/dgraph-io/badger/pull/1173",
+  "license_note": "Real upstream badger optimization PR #1173; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up concurrent skiplist writes by removing contention on the global math/rand mutex used when picking a node's random height, without changing behavior.",
+  "instructions": "Optimize the skl package for speed WITHOUT changing behavior. The benchmark BenchmarkWrite measures concurrent Put throughput; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./skl"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "skl/skl_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "skl",
+   "benchmark": "BenchmarkWrite",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "badger-1173",
+  "description": "randomHeight() calls the global math/rand source (rand.Uint32), whose internal mutex serializes every concurrent skiplist Put, limiting parallel write throughput.",
+  "target_files": [
+   "skl/skl.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "badger-1173",
+  "description": "Concurrent skiplist writes contend on the global math/rand lock taken inside randomHeight() in skl/skl.go, serializing Put across goroutines.",
+  "detection_keywords": [
+   "global rand mutex contention",
+   "serialized concurrent Put",
+   "lock contention on math/rand",
+   "poor parallel write scaling",
+   "randomHeight bottleneck"
+  ],
+  "localization_keywords": [
+   "skl.go",
+   "randomHeight function",
+   "rand.Uint32 in skiplist",
+   "Put calls randomHeight",
+   "math/rand global source"
+  ],
+  "repair_keywords": [
+   "replace global rand with local source",
+   "use z.FastRand from ristretto",
+   "make randomHeight a Skiplist method",
+   "avoid math/rand mutex",
+   "lock-free random height"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Skiplist write throughput does not scale with goroutines because every Put picks a random node height using the shared math/rand source, which serializes callers on its internal lock.",
+  "error_logs": [
+   "concurrency profile shows contention on math/rand's global lock inside skl.randomHeight on the Put path"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkWrite$' ./skl"
+  ],
+  "relevant_files": [
+   "skl/skl.go"
+  ],
+  "notes": "Real upstream optimization; concurrency diagnosis injected as upstream context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "badger"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

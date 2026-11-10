@@ -1,0 +1,55 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ACBench paper workflow" id="acbench-workflow">
+    <mxGraphModel dx="1200" dy="520" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="ACBench workflow: correctness-gated, live-measured feedback loop" style="text;html=1;fontSize=16;fontStyle=1;align=center;verticalAlign=middle;fontColor=#104D70;" vertex="1" parent="1">
+          <mxGeometry x="110" y="18" width="1080" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="pr" value="Real merged&#10;Go perf PR" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#6B7280;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="35" y="100" width="125" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="harness" value="Harness&#10;baseline + tests&#10;gold speedup" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#6B7280;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="200" y="100" width="145" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="prompt" value="Prompt slot k&#10;task + prior diff&#10;+ feedback string" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F0F8;strokeColor=#1A80BB;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="390" y="100" width="155" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="diff" value="Model emits&#10;candidate&#10;unified diff" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F0F8;strokeColor=#1A80BB;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="590" y="100" width="145" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="gate" value="Apply +&#10;go test?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#6B7280;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="790" y="88" width="115" height="86" as="geometry" />
+        </mxCell>
+        <mxCell id="measure" value="Live benchmark&#10;GB200 timing&#10;perf_score" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F0F8;strokeColor=#1A80BB;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="960" y="100" width="155" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="score" value="Best-of-K&#10;cell score&#10;(K=4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF1F6;strokeColor=#104D70;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="100" width="115" height="62" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#6B7280;" edge="1" parent="1" source="pr" target="harness"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#6B7280;" edge="1" parent="1" source="harness" target="prompt"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#1A80BB;" edge="1" parent="1" source="prompt" target="diff"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#1A80BB;" edge="1" parent="1" source="diff" target="gate"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="passes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=11;strokeColor=#1A80BB;fontColor=#104D70;" edge="1" parent="1" source="gate" target="measure"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#1A80BB;" edge="1" parent="1" source="measure" target="score"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="retry" value="within-slot apply retry" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;fontSize=11;strokeColor=#A00000;fontColor=#A00000;" edge="1" parent="1" source="gate" target="prompt"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="848" y="58" /><mxPoint x="468" y="58" /></Array></mxGeometry></mxCell>
+        <mxCell id="loop" value="between-slot measured feedback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;fontSize=11;strokeColor=#1A80BB;fontColor=#104D70;" edge="1" parent="1" source="measure" target="prompt"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1038" y="205" /><mxPoint x="468" y="205" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="axisA" value="Axis A: apply feedback&#10;OFF = no error text; ON = error text + bounded retries; retry-only = bounded retries without error text" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7E9E9;strokeColor=#A00000;fontColor=#1a1a1a;fontSize=11;align=left;spacingLeft=10;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="95" y="275" width="515" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="axisB" value="Axis B: profiling feedback&#10;none to directional to numbers to benchstat to prof_cpu to prof_line; stale profile as control" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F0F8;strokeColor=#1A80BB;fontColor=#1a1a1a;fontSize=11;align=left;spacingLeft=10;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="690" y="275" width="515" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="note" value="Profile payloads appear only after a patch passes tests and is benchmarked; all reported speedups come from live re-measurement." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF1F6;strokeColor=#1A80BB;fontColor=#1a1a1a;fontSize=11;align=center;spacingLeft=8;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="360" y="212" width="580" height="38" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

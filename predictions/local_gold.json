@@ -1,0 +1,29 @@
+{
+  "_defaults": {
+    "aiops_agent_ref": "acbench.agents.gold_ops:GoldOpsAgent"
+  },
+  "code_only_billing_pricing_bundle_threshold": {
+    "use_gold_patch": true
+  },
+  "code_only_feature_router_denylist_precedence": {
+    "use_gold_patch": true
+  },
+  "code_only_maintenance_window_overnight_rollover": {
+    "use_gold_patch": true
+  },
+  "ops_only_cache_api_stale_index": {},
+  "ops_only_queue_worker_backlog_spike": {},
+  "ops_only_payments_api_restart_loop": {},
+  "ops_only_auth_service_token_clock_skew": {},
+  "ops_only_db_connection_pool_exhaustion": {},
+  "ops_only_notifier_dead_letter_queue_overflow": {},
+  "combined_billing_pricing_checkout_totals": {
+    "use_gold_patch": true
+  },
+  "combined_feature_router_rollout_guard": {
+    "use_gold_patch": true
+  },
+  "combined_maintenance_window_midnight_skip": {
+    "use_gold_patch": true
+  }
+}

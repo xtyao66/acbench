@@ -1,0 +1,12 @@
+diff --git a/src/billing_pricing/pricing.py b/src/billing_pricing/pricing.py
+--- a/src/billing_pricing/pricing.py
++++ b/src/billing_pricing/pricing.py
+@@ -21,7 +21,7 @@ def bundle_discount_rate(lines: list[dict[str, int | str]]) -> float:
+     """Return the best bundle discount rate for the cart."""
+ 
+     eligible_units = _eligible_bundle_units(lines)
+-    if eligible_units > 3:
++    if eligible_units >= 3:
+         return 0.10
+     if eligible_units >= 2 and len(lines) >= 2:
+         return 0.05

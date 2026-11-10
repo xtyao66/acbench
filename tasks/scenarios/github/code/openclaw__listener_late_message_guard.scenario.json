@@ -1,0 +1,121 @@
+{
+  "scenario_id": "github_code_openclaw_listener_late_message_guard",
+  "title": "OpenClaw should skip late listener events instead of crashing after a run ends",
+  "mode": "code_only",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_listener_runtime_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62840",
+    "snapshot_key": "openclaw-62840-code-fixture-v1",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #62840."
+  },
+  "task": {
+    "summary": "Repair the listener path so late WhatsApp events are skipped safely instead of crashing the gateway.",
+    "instructions": "Investigate why a listener callback raises after the active run ends, repair the guard behavior so late events are skipped safely, and preserve the healthy in-run event path.",
+    "acceptance_notes": "Alternative fixes are allowed as long as late listener events stop crashing the runtime."
+  },
+  "visible_context": {
+    "issue_text": "A WhatsApp message arriving after the previous run finishes can crash the gateway with `Agent listener invoked outside active run`.",
+    "error_logs": [
+      "Unhandled promise rejection: Error: Agent listener invoked outside active run",
+      "gateway exited immediately after a late listener event"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_listener_runtime/agent_loop.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_listener_runtime/agent_loop.py",
+      "tests/test_agent_loop.py"
+    ],
+    "notes": "This fixture models the guard behavior behind the late-event crash."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-62840-late-message-guard",
+    "description": "The listener path raises instead of skipping events that arrive after the active run ends.",
+    "target_files": [
+      "src/openclaw_listener_runtime/agent_loop.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_outside_active_run_are_skipped"
+    ],
+    "pass_to_pass": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_during_active_run_are_processed",
+      "test_agent_loop.AgentRuntimeTests::test_finishing_a_run_clears_the_active_run"
+    ],
+    "required_tests": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_outside_active_run_are_skipped",
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_during_active_run_are_processed",
+      "test_agent_loop.AgentRuntimeTests::test_finishing_a_run_clears_the_active_run"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "This GitHub-derived reproduction is expected to be repaired in code, not by changing tests."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "listener-runtime",
+      "gateway-stability"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "code"
+  ],
+  "notes": "Code-only localized reproduction of openclaw/openclaw issue #62840.",
+  "gold_patch_path": "patches/github/openclaw_listener_outside_active_run_fix.diff"
+}

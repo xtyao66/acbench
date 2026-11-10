@@ -1,0 +1,141 @@
+{
+  "scenario_id": "combined_maintenance_window_midnight_skip",
+  "title": "Midnight maintenance incident with window repair",
+  "mode": "combined",
+  "service": {
+    "application": "maintenance-window",
+    "service": "scheduler-window",
+    "deployment": "local",
+    "repository_path": "services/fixtures/maintenance_window_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "maintenance-window-midnight-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a midnight scheduling incident and repair the maintenance window logic.",
+    "instructions": "Use the incident evidence to localize why overnight windows reject valid times after midnight, then apply a code fix without regressing same-day behavior.",
+    "acceptance_notes": "Both the ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Jobs resumed incorrectly after midnight because the scheduler stopped treating the overnight maintenance window as active.",
+    "error_logs": [
+      "scheduler trace: 00:30 marked outside 23:00-02:00 maintenance window",
+      "incident notes: late-evening times near 23:15 are also misclassified"
+    ],
+    "reproduction_steps": [
+      "Inspect the maintenance window fixture and run its unit tests.",
+      "Use the incident evidence to localize the bug before applying a patch."
+    ],
+    "relevant_files": [
+      "src/maintenance_window/window.py",
+      "tests/test_window.py"
+    ],
+    "notes": "The same-day window behavior should stay intact."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-midnight-window-incident-001",
+    "description": "Synthetic midnight scheduling incident tied to the maintenance_window fixture.",
+    "detection_keywords": [
+      "overnight",
+      "midnight",
+      "maintenance window"
+    ],
+    "localization_keywords": [
+      "window logic",
+      "overnight",
+      "scheduler-window"
+    ],
+    "repair_keywords": [
+      "overnight window",
+      "rollover",
+      "time logic"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "maintenance-window-overnight-rollover-001",
+    "description": "Overnight maintenance windows are evaluated using same-day logic.",
+    "target_files": [
+      "src/maintenance_window/window.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_after_midnight_times",
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_late_evening_times"
+    ],
+    "pass_to_pass": [
+      "test_window.MaintenanceWindowTests::test_same_day_window_excludes_out_of_range_time"
+    ],
+    "required_tests": [
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_after_midnight_times",
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_late_evening_times",
+      "test_window.MaintenanceWindowTests::test_same_day_window_excludes_out_of_range_time"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a time-logic fix."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "scheduler",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "scheduler"
+  ],
+  "notes": "Combined midnight scheduling incident and repair task.",
+  "gold_patch_path": "patches/maintenance_window_overnight_fix.diff"
+}

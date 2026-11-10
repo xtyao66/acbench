@@ -1,0 +1,28 @@
+diff --git a/scrape/scrape.go b/scrape/scrape.go
+index db662cb0894..c31f18ef20b 100644
+--- a/scrape/scrape.go
++++ b/scrape/scrape.go
+@@ -1452,7 +1452,10 @@ func (sl *scrapeLoop) scrapeAndReport(last, appendTime time.Time, errc chan<- er
+ 			sl.l.Warn("Append failed", "err", err)
+ 		}
+ 		if errc != nil {
+-			errc <- forcedErr
++			select {
++			case errc <- forcedErr:
++			case <-sl.ctx.Done():
++			}
+ 		}
+
+ 		return start
+@@ -1489,7 +1492,10 @@ func (sl *scrapeLoop) scrapeAndReport(last, appendTime time.Time, errc chan<- er
+ 		}
+ 		sl.scrapeFailureLoggerMtx.RUnlock()
+ 		if errc != nil {
+-			errc <- scrapeErr
++			select {
++			case errc <- scrapeErr:
++			case <-sl.ctx.Done():
++			}
+ 		}
+ 		if errors.Is(scrapeErr, errBodySizeLimit) {
+ 			bytesRead = -1

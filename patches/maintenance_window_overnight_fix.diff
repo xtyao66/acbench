@@ -1,0 +1,12 @@
+diff --git a/src/maintenance_window/window.py b/src/maintenance_window/window.py
+--- a/src/maintenance_window/window.py
++++ b/src/maintenance_window/window.py
+@@ -16,7 +16,7 @@ def is_time_in_window(moment: time, start: time, end: time) -> bool:
+ 
+     if start <= end:
+         return start <= moment < end
+-    return start <= moment < end
++    return moment >= start or moment < end
+ 
+ 
+ def is_clock_string_in_window(

@@ -1,0 +1,11 @@
+{
+  "name": "perf_qa3",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_9634.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_845.scenario.json"
+    }
+  ]
+}

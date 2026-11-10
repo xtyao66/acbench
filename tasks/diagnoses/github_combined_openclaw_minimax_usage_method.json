@@ -1,0 +1,37 @@
+{
+  "scenario_id": "github_combined_openclaw_minimax_usage_method",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Running the usage status command for the MiniMax provider fails: the remaining-quota lookup against the provider's balance endpoint errors out and reports a not-found result, so usage can no longer be displayed.",
+    "root_cause": "In the MiniMax usage tracker module, the routine that queries the provider's remaining-quota (balance) endpoint issues the request using a write-style HTTP verb, whereas that endpoint is read-only and only honors a fetch-style request. Because the request shape does not match what the endpoint accepts, the provider responds with a not-found status instead of returning the quota data, which surfaces as a usage error. The endpoint path and the authentication header are correct; only the request method used to call the balance endpoint is wrong.",
+    "remediation": "Change the call that retrieves the remaining-quota information so it uses a read-style request verb instead of the write-style one, while keeping the existing endpoint path and authentication header behavior unchanged.",
+    "evidence": [
+      "status --usage shows MiniMax error after calling /coding_plan/remains",
+      "curl verification: GET works, POST returns 404"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Running the usage status command for the MiniMax provider fails: the remaining-quota lookup against the provider's balance endpoint errors out and reports a not-found result, so usage can no longer be displayed.",
+    "root_cause": "The usage tracker builds the balance endpoint address from a base service URL plus a relative path, and the path segment for the remaining-quota resource is malformed or stale, so the assembled address points at a resource that no longer exists. The provider therefore answers with a not-found status. The mismatch comes from how the path is concatenated onto the base, for example a missing or doubled separator or an outdated route name, so the request never reaches the live balance resource.",
+    "remediation": "Correct the construction of the balance endpoint address so the relative quota path is joined to the base service URL with the proper separator and matches the provider's current route, then re-run the usage status command to confirm the lookup resolves.",
+    "evidence": [
+      "status --usage shows MiniMax error after calling /coding_plan/remains",
+      "curl verification: GET works, POST returns 404"
+    ]
+  },
+  "wrong_rationale": "A malformed or stale endpoint path is a classic cause of not-found responses and would draw an engineer to edit the URL-construction logic, which is plausible because the failure is tied to a specific provider route. It is incorrect because the path is actually correct (a read request to the same address succeeds) and the real defect is the request verb, so fixing the URL assembly would not resolve the outage."
+}

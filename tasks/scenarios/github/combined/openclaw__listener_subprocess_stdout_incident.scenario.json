@@ -1,0 +1,146 @@
+{
+  "scenario_id": "github_combined_openclaw_listener_subprocess_stdout",
+  "title": "OpenClaw should discard late subprocess stdout instead of crashing after a run ends",
+  "mode": "combined",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_listener_runtime_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62477",
+    "snapshot_key": "openclaw-62477-localized-fixture-v2",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #62477."
+  },
+  "task": {
+    "summary": "Triage a late subprocess-stdout crash and repair the listener guard.",
+    "instructions": "Use the incident clues to localize why subprocess stdout still reaches the listener after the run has ended, repair the guard so those events are dropped safely, and preserve normal in-run processing.",
+    "acceptance_notes": "Both ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Subprocess stdout can still arrive after a run ends, and the gateway crashes when the listener processes that late output.",
+    "error_logs": [
+      "subprocess stdout event arrived after run end",
+      "Unhandled promise rejection: Agent listener invoked outside active run"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_listener_runtime/agent_loop.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_listener_runtime/agent_loop.py",
+      "tests/test_agent_loop.py"
+    ],
+    "notes": "This fixture reuses the same guard bug with subprocess stdout framing."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62477-subprocess-stdout-guard",
+    "description": "Synthetic listener incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "subprocess stdout",
+      "outside active run",
+      "gateway crash"
+    ],
+    "localization_keywords": [
+      "agent_loop.py",
+      "late stdout",
+      "active run",
+      "listener"
+    ],
+    "repair_keywords": [
+      "skip late events",
+      "subprocess output",
+      "return instead of throw",
+      "safe guard"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-62477-subprocess-stdout-guard",
+    "description": "Late subprocess stdout is raised instead of skipped after the active run ends.",
+    "target_files": [
+      "src/openclaw_listener_runtime/agent_loop.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_outside_active_run_are_skipped"
+    ],
+    "pass_to_pass": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_during_active_run_are_processed",
+      "test_agent_loop.AgentRuntimeTests::test_finishing_a_run_clears_the_active_run"
+    ],
+    "required_tests": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_outside_active_run_are_skipped",
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_during_active_run_are_processed",
+      "test_agent_loop.AgentRuntimeTests::test_finishing_a_run_clears_the_active_run"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This GitHub-derived reproduction expects incident localization and a code repair."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "subprocess-output",
+      "listener-runtime"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "combined"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #62477.",
+  "gold_patch_path": "patches/github/openclaw_listener_outside_active_run_fix.diff"
+}

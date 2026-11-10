@@ -1,0 +1,121 @@
+{
+  "scenario_id": "github_code_openclaw_gpt5_overlay_aggregator_provider",
+  "title": "OpenClaw GPT-5 overlay should apply for aggregator providers",
+  "mode": "code_only",
+  "service": {
+    "application": "openclaw",
+    "service": "provider-prompt-overlay",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_prompt_overlay_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.9",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/63076",
+    "snapshot_key": "openclaw-63076-localized-fixture-v1",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #63076."
+  },
+  "task": {
+    "summary": "Repair GPT-5 prompt overlay resolution so aggregator providers also receive the overlay.",
+    "instructions": "Investigate why aggregator-backed GPT-5 models miss the overlay, repair the provider/model matching logic, and preserve the direct OpenAI behavior and non-GPT-5 exclusions.",
+    "acceptance_notes": "Alternative fixes are allowed as long as GPT-5 aggregator models receive the overlay without regressing the existing direct-provider behavior."
+  },
+  "visible_context": {
+    "issue_text": "GPT-5 prompt overlay sections show up for direct OpenAI models but disappear when the same GPT-5 model is served through OpenRouter or OpenCode.",
+    "error_logs": [
+      "aggregator provider produced a prompt without `## Interaction Style`",
+      "direct OpenAI provider still included the GPT-5 overlay sections"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_prompt_overlay/overlay.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_prompt_overlay/overlay.py",
+      "tests/test_overlay.py"
+    ],
+    "notes": "This fixture focuses on provider/model overlay selection, not the full OpenClaw extension runtime."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-63076-gpt5-overlay-provider-match",
+    "description": "Aggregator-backed GPT-5 models do not receive the overlay because the provider/model matching logic is too narrow.",
+    "target_files": [
+      "src/openclaw_prompt_overlay/overlay.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_overlay.PromptOverlayTests::test_openrouter_prefixed_gpt5_models_also_get_the_overlay"
+    ],
+    "pass_to_pass": [
+      "test_overlay.PromptOverlayTests::test_direct_openai_gpt5_models_keep_the_overlay",
+      "test_overlay.PromptOverlayTests::test_non_gpt5_models_do_not_get_the_overlay"
+    ],
+    "required_tests": [
+      "test_overlay.PromptOverlayTests::test_openrouter_prefixed_gpt5_models_also_get_the_overlay",
+      "test_overlay.PromptOverlayTests::test_direct_openai_gpt5_models_keep_the_overlay",
+      "test_overlay.PromptOverlayTests::test_non_gpt5_models_do_not_get_the_overlay"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "This GitHub-derived reproduction is expected to be repaired in code, not by changing tests."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "prompt-overlay",
+      "provider-routing"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "code"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #63076.",
+  "gold_patch_path": "patches/github/openclaw_gpt5_overlay_fix.diff"
+}

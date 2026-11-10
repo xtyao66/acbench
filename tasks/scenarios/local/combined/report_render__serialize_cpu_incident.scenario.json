@@ -1,0 +1,152 @@
+{
+  "scenario_id": "combined_report_render_serialize_cpu",
+  "title": "Report-rendering CPU incident with join-once serialization repair",
+  "mode": "combined",
+  "service": {
+    "application": "report-render",
+    "service": "window-reporter",
+    "deployment": "local",
+    "repository_path": "services/fixtures/report_render_quadratic"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "report-render-serialize-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a report-rendering CPU incident and remove the quadratic string-building hotspot.",
+    "instructions": "Use the incident clues to localize the super-linear hotspot in the document serializer, apply a performance repair, and keep every rendering test green including the exact-output guards.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the renderer must build a document whose cost grows linearly with the number of records, with byte-for-byte identical output."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the window-reporter workers saturated CPU and lagged whenever a reporting window contained many records. Render time grows super-linearly: doubling the number of records in a window roughly quadruples the time spent building the report document, even though the records themselves are cheap to format.",
+    "error_logs": [
+      "alerts/reporter_cpu.log: time to render a window grows faster than the record count; doubling the records ~4x the render time",
+      "profile: a single document-building step dominates the flame graph, its cost rising with the square of the output size; samples cluster in string allocation and memory copies"
+    ],
+    "reproduction_steps": [
+      "Inspect the report-render fixture and run the unit tests.",
+      "Use the profile clues to localize the super-linear hotspot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/report_render/",
+      "tests/test_serializer.py"
+    ],
+    "notes": "The incident points at how the worker assembles the output document from per-record lines, not at the cost of formatting any single line."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-report-render-serialize-cpu-incident-001",
+    "description": "Synthetic report-rendering CPU incident tied to the report_render_quadratic fixture.",
+    "detection_keywords": [
+      "CPU saturation",
+      "render time grows super-linearly with record count",
+      "doubling the records quadruples the work"
+    ],
+    "localization_keywords": [
+      "quadratic hotspot in the document-building path",
+      "output assembled by repeated accumulation inside a loop",
+      "cost grows with the square of the output size",
+      "time dominated by string allocation and memory copies",
+      "window-reporter"
+    ],
+    "repair_keywords": [
+      "collect the pieces and join them once",
+      "accumulate parts in a list then build the result in a single pass",
+      "avoid rebuilding the whole accumulator on every iteration",
+      "replace the repeated concatenation with a one-shot join",
+      "stream the pieces into a single buffer",
+      "O(n^2) to O(n)",
+      "make output assembly linear in the output size"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "report-render-quadratic-concat-001",
+    "description": "The report serializer assembles the output document by repeatedly concatenating onto a growing string inside a loop, recopying the whole accumulated prefix every iteration, making rendering O(n^2) in the output size instead of O(n).",
+    "target_files": [
+      "src/report_render/serializer.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_serializer.RenderReportTests::test_renders_exact_document"
+    ],
+    "pass_to_pass": [
+      "test_serializer.RenderReportTests::test_empty_batch_renders_header_only",
+      "test_serializer.RenderReportTests::test_preserves_input_order_and_duplicates",
+      "test_serializer.RenderReportTests::test_unknown_keys_ignored_and_missing_cells_blank",
+      "test_serializer.RenderReportTests::test_line_count_matches_records"
+    ],
+    "required_tests": [
+      "test_serializer.RenderReportTests::test_renders_exact_document",
+      "test_serializer.RenderReportTests::test_empty_batch_renders_header_only",
+      "test_serializer.RenderReportTests::test_preserves_input_order_and_duplicates",
+      "test_serializer.RenderReportTests::test_unknown_keys_ignored_and_missing_cells_blank",
+      "test_serializer.RenderReportTests::test_line_count_matches_records"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that replaces a quadratic repeated string concatenation with a single linear-time join."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "string_concat_quadratic"
+  ],
+  "notes": "Combined report-rendering CPU incident and join-once serialization repair task.",
+  "gold_patch_path": "patches/report_render_join_once_fix.diff"
+}

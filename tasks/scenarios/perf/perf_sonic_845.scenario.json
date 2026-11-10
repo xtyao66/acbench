@@ -1,0 +1,110 @@
+{
+  "scenario_id": "perf_sonic_845",
+  "title": "sonic/ast: raw encode fast-path",
+  "mode": "combined",
+  "service": {
+    "application": "sonic",
+    "service": "ast",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_sonic_845"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/bytedance/sonic",
+    "base_commit": "a09ee02ff36f5e89a36551a322a2ff5f536ec634",
+    "pr_url": "https://github.com/bytedance/sonic/pull/845",
+    "license_note": "Real upstream bytedance/sonic optimization PR #845; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up Node.MarshalJSON for raw AST nodes by returning the already-stored raw JSON directly instead of re-encoding it, without changing the produced output.",
+    "instructions": "Optimize the ast package for speed WITHOUT changing behavior. The benchmark BenchmarkEncodeRaw_Sonic measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./ast"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "ast/encode_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "ast",
+      "benchmark": "BenchmarkEncodeRaw_Sonic",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": true,
+      "gold_speedup": 1177.798
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "sonic-845",
+    "description": "Node.MarshalJSON re-encodes raw AST nodes through the general encoder buffer instead of returning the raw JSON already held by the node.",
+    "target_files": [
+      "ast/encode.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "sonic-845",
+    "description": "Marshalling raw ast.Node values goes through the full encoder buffer path in ast/encode.go even when the node already holds its raw JSON bytes.",
+    "detection_keywords": [
+      "raw node re-encoded on marshal",
+      "encoder buffer used for already-raw JSON",
+      "redundant copy in Node.MarshalJSON",
+      "no fast path for raw ast nodes"
+    ],
+    "localization_keywords": [
+      "ast/encode.go",
+      "Node.MarshalJSON",
+      "newBuffer/encode path",
+      "isRaw raw node"
+    ],
+    "repair_keywords": [
+      "fast path for raw node",
+      "return raw string directly on isRaw",
+      "rt.Str2Mem(self.toString())",
+      "dirtmake.Bytes instead of make"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Marshalling raw ast.Node values to JSON is slower than necessary because the node is re-encoded through the general encoder buffer even when it already holds the raw JSON bytes.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^BenchmarkEncodeRaw_Sonic$' ./ast"
+    ],
+    "relevant_files": [
+      "ast/encode.go"
+    ],
+    "notes": "Real upstream optimization PR #845; adds a raw-node fast path in Node.MarshalJSON and swaps make for dirtmake.Bytes."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "sonic"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

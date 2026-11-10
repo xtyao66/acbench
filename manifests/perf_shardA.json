@@ -1,0 +1,26 @@
+{
+  "name": "perf_shardA",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_13673.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17067.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17439.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_6432.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_8489.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_9634.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_845.scenario.json"
+    }
+  ]
+}

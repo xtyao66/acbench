@@ -1,0 +1,149 @@
+{
+  "scenario_id": "combined_early_filter_ranking_cpu",
+  "title": "Top-K ranking CPU incident with early-filter short-circuit repair",
+  "mode": "combined",
+  "service": {
+    "application": "early-filter",
+    "service": "candidate-ranking",
+    "deployment": "local",
+    "repository_path": "services/fixtures/early_filter_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "early-filter-ranking-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a top-K ranking CPU incident and stop paying the expensive per-candidate score for candidates that are filtered out.",
+    "instructions": "Use the incident clues to localize where the request path does expensive work on items it then discards, apply a performance repair, and restore all ranking tests including the score-call-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the ranker must produce the same top-K output while computing the expensive relevance score only for candidates that survive the cheap eligibility predicate."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the candidate-ranking endpoint saturated CPU and missed its latency budget on large request batches. CPU time per request tracks the TOTAL number of candidates in the batch, not the much smaller number that are actually eligible to be returned, so requests that match only a handful of items still burn CPU proportional to the whole batch.",
+    "error_logs": [
+      "alerts/ranking_cpu.log: per-request CPU scales with total candidate count, not with the eligible/returned count",
+      "profile: the expensive relevance-scoring function dominates the flame graph and is invoked once per candidate -- including candidates that are dropped before they could ever appear in the response"
+    ],
+    "reproduction_steps": [
+      "Inspect the ranking fixture and run the unit tests.",
+      "Use the profile clues to localize where costly work happens on candidates that are later discarded, before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/early_filter/",
+      "tests/test_ranker.py"
+    ],
+    "notes": "The incident points at the ORDER of operations in the request path -- expensive work is performed up front for every candidate, then most results are thrown away -- not at the cost of any single scoring call."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-early-filter-ranking-cpu-incident-001",
+    "description": "Synthetic candidate-ranking CPU incident tied to the early_filter fixture.",
+    "detection_keywords": [
+      "CPU saturation on large batches",
+      "per-request CPU scales with total candidate count",
+      "cost tracks batch size not eligible/returned count"
+    ],
+    "localization_keywords": [
+      "expensive work performed on items that are later discarded",
+      "scoring runs for every candidate before filtering",
+      "the costly step happens before the cheap eligibility check",
+      "candidate-ranking request path"
+    ],
+    "repair_keywords": [
+      "apply the cheap eligibility filter first",
+      "short-circuit before the expensive score",
+      "only score candidates that survive the predicate",
+      "stop computing scores for items that are discarded",
+      "avoid materializing a fully-scored intermediate list",
+      "keep a bounded top-K instead of fully sorting everything",
+      "filter early then score"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "early-filter-late-filter-overscore-001",
+    "description": "The ranking handler materializes a fully-scored intermediate list for every candidate and only then drops the ineligible ones and slices the top-K, so the expensive per-candidate relevance score is paid even for candidates a cheap eligibility check would have rejected.",
+    "target_files": [
+      "src/early_filter/ranker.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_ranker.RankTopKTests::test_scores_only_eligible_candidates"
+    ],
+    "pass_to_pass": [
+      "test_ranker.RankTopKTests::test_returns_top_k_by_score_then_doc_id",
+      "test_ranker.RankTopKTests::test_excludes_ineligible_and_handles_edges",
+      "test_ranker.RankTopKTests::test_top_k_truncates_to_highest_scores"
+    ],
+    "required_tests": [
+      "test_ranker.RankTopKTests::test_scores_only_eligible_candidates",
+      "test_ranker.RankTopKTests::test_returns_top_k_by_score_then_doc_id",
+      "test_ranker.RankTopKTests::test_excludes_ineligible_and_handles_edges",
+      "test_ranker.RankTopKTests::test_top_k_truncates_to_highest_scores"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that filters eligibility before computing the expensive per-candidate score, instead of scoring every candidate and filtering afterward."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "early_filter"
+  ],
+  "notes": "Combined candidate-ranking CPU incident and early-filter short-circuit repair task. Measured-performance scenario: graded on real measured speedup via bench.py.",
+  "gold_patch_path": "patches/early_filter_short_circuit_topk_fix.diff"
+}

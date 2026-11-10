@@ -1,0 +1,27 @@
+{
+  "openai": {
+    "api_key": "",
+    "api_key_env": "OPENAI_API_KEY",
+    "model": "gpt-4.1-mini",
+    "base_url": ""
+  },
+  "agent": {
+    "ops_agent_ref": "acbench.agents.openai_ops:OpenAIOpsAgent",
+    "code_agent_ref": "acbench.agents.openai_code:OpenAICodePatchAgent",
+    "max_steps": 25,
+    "keep_artifacts": true
+  },
+  "runs": [
+    {
+      "name": "local",
+      "manifest": "manifests/local_suite.json",
+      "output": "runs/local_openai_agent_eval.json"
+    },
+    {
+      "name": "github",
+      "manifest": "manifests/github_openclaw_extended.json",
+      "output": "runs/github_openclaw_extended_openai_agent_eval.json"
+    }
+  ],
+  "summary_output": "runs/openai_agent_batch_summary.json"
+}

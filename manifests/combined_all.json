@@ -1,0 +1,62 @@
+{
+  "name": "acbench-combined-all",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__completion_process_leak_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__discord_multi_account_shortcuts_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__discord_plugin_routing_shortcuts_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__discord_slash_done_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__gpt5_overlay_personality_loss_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_cron_run_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_outside_active_run_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_subprocess_stdout_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_telegram_reply_loss_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__minimax_usage_method_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__no_reply_prefix_leak_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__pairing_state_array_approval_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__plugin_schema_cycle_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__slow_failover_degradation_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__status_deep_false_invalid_config_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/billing_pricing__checkout_totals_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/feature_router__rollout_guard_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/maintenance_window__midnight_skip_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/notify_fanout__lookup_latency_incident.scenario.json"
+    }
+  ]
+}

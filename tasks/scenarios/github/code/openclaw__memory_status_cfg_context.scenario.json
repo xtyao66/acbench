@@ -1,0 +1,119 @@
+{
+  "scenario_id": "github_code_openclaw_memory_status_cfg_context",
+  "title": "OpenClaw memory status should preserve config context when resolving fallback providers",
+  "mode": "code_only",
+  "service": {
+    "application": "openclaw",
+    "service": "memory-status",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_memory_status_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62855",
+    "snapshot_key": "openclaw-62855-code-fixture-v2",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #62855."
+  },
+  "task": {
+    "summary": "Repair memory status resolution so fallback provider lookup keeps the effective config context.",
+    "instructions": "Investigate why status --deep loses config context during fallback provider resolution, repair the config-threading path, and preserve the existing rendering behavior when counts are present.",
+    "acceptance_notes": "Alternative fixes are allowed as long as fallback provider resolution sees the right config."
+  },
+  "visible_context": {
+    "issue_text": "A healthy memory provider can be reported as invalid because fallback embedding resolution is called without the current config context.",
+    "error_logs": [
+      "memory-lancedb-pro invalid config: embedding: must have required property 'embedding'",
+      "the same plugin still reports vector ready and fts ready"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_memory_status/status.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_memory_status/status.py",
+      "tests/test_status.py"
+    ],
+    "notes": "This fixture models the config-resolution path behind the false invalid-config message."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-62855-memory-status-cfg-context",
+    "description": "Fallback provider resolution drops the current config context during status evaluation.",
+    "target_files": [
+      "src/openclaw_memory_status/status.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_status.MemoryStatusResolutionTests::test_resolution_preserves_cfg_for_fallback_provider"
+    ],
+    "pass_to_pass": [
+      "test_status.MemoryStatusResolutionTests::test_render_keeps_counts_when_present"
+    ],
+    "required_tests": [
+      "test_status.MemoryStatusResolutionTests::test_resolution_preserves_cfg_for_fallback_provider",
+      "test_status.MemoryStatusResolutionTests::test_render_keeps_counts_when_present"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "This GitHub-derived reproduction is expected to be repaired in code, not by changing tests."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "config-resolution",
+      "memory-status"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "code"
+  ],
+  "notes": "Code-only localized reproduction of openclaw/openclaw issue #62855.",
+  "gold_patch_path": "patches/github/openclaw_memory_status_cfg_fix.diff"
+}

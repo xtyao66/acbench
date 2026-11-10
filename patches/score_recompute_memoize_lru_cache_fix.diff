@@ -1,0 +1,39 @@
+diff --git a/src/score_recompute/handler.py b/src/score_recompute/handler.py
+index 970b495..61de150 100644
+--- a/src/score_recompute/handler.py
++++ b/src/score_recompute/handler.py
+@@ -15,9 +15,20 @@ where the CPU time goes.
+
+ from __future__ import annotations
+
++from functools import lru_cache
++
+ from score_recompute.risk_model import score_profile
+
+
++# Memoize the pure risk model: since ``score_profile`` is a pure function of the
++# profile key, cache its result so each distinct key is derived at most once and
++# every repeat of that key reuses the cached score. A batch with only a few
++# unique keys now costs that many computations instead of one per event.
++@lru_cache(maxsize=None)
++def _cached_score(profile_key: str) -> int:
++    return score_profile(profile_key)
++
++
+ def score_events(events: list[dict[str, str]]) -> list[dict[str, object]]:
+     """Return one scored record per event, in input order.
+
+@@ -28,9 +39,9 @@ def score_events(events: list[dict[str, str]]) -> list[dict[str, object]]:
+     scored: list[dict[str, object]] = []
+     for event in events:
+         profile_key = event["profile_key"]
+-        # The expensive, *pure* risk model is recomputed for every event, even
+-        # when many events repeat the same profile key: N full computations for
+-        # a batch of N events regardless of how few distinct keys there are.
+-        risk = score_profile(profile_key)
++        # The memoized scorer derives each distinct profile key once; repeated
++        # keys hit the cache, so the expensive pure model runs once per unique
++        # key rather than once per event.
++        risk = _cached_score(profile_key)
+         scored.append({"profile_key": profile_key, "risk": risk})
+     return scored

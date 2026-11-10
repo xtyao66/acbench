@@ -1,0 +1,108 @@
+{
+  "scenario_id": "perf_victoriametrics_5721",
+  "title": "lib/encoding: faster varint marshaling",
+  "mode": "combined",
+  "service": {
+    "application": "victoriametrics",
+    "service": "encoding",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_victoriametrics_5721"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/VictoriaMetrics/VictoriaMetrics",
+    "base_commit": "61562cdee9c9e1c5674fea3d5d614b588fd744a5",
+    "pr_url": "https://github.com/VictoriaMetrics/VictoriaMetrics/pull/5721",
+    "license_note": "Real upstream VictoriaMetrics optimization PR #5721; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up MarshalVarInt64s in lib/encoding so it stops looping byte-by-byte to emit each varint, without changing the encoded output.",
+    "instructions": "Optimize the lib/encoding package for speed WITHOUT changing behavior. The benchmark BenchmarkMarshalVarInt64s measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./lib/encoding"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "lib/encoding/int_timing_test.go",
+      "lib/encoding/int_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "lib/encoding",
+      "benchmark": "BenchmarkMarshalVarInt64s",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": true,
+      "gold_speedup": 1.418
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "victoriametrics-5721",
+    "description": "MarshalVarInt64s in lib/encoding/int.go emits each varint with a per-byte append loop instead of computing the encoded length up front and writing all bytes in one switch case. Note: the lib/encoding package needs CGO_ENABLED=1 because it pulls in lib/encoding/zstd cgo bindings.",
+    "target_files": [
+      "lib/encoding/int.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "victoriametrics-5721",
+    "description": "Varint marshaling of int64 slices in lib/encoding/int.go uses a byte-at-a-time append loop in MarshalVarInt64s, which is slower than computing the output length once and emitting all bytes together.",
+    "detection_keywords": [
+      "byte-at-a-time append loop in MarshalVarInt64s",
+      "slow ns/op marshaling int64 slices",
+      "per-byte shift loop in varint encoding"
+    ],
+    "localization_keywords": [
+      "lib/encoding/int.go",
+      "MarshalVarInt64s function",
+      "varint marshal loop"
+    ],
+    "repair_keywords": [
+      "compute encoded length with bits.LeadingZeros64",
+      "switch on varint byte count",
+      "emit all varint bytes in one append"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Marshaling slices of int64 values to varint form via MarshalVarInt64s shows up as a hot spot on ingestion and storage paths in VictoriaMetrics.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "CGO_ENABLED=1 go test -run='^$' -bench='^BenchmarkMarshalVarInt64s$' ./lib/encoding"
+    ],
+    "relevant_files": [
+      "lib/encoding/int.go"
+    ],
+    "notes": "Real upstream optimization PR; benchmark BenchmarkMarshalVarInt64s already exists in the repo."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "victoriametrics"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

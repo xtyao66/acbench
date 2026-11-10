@@ -1,0 +1,113 @@
+{
+  "scenario_id": "github_ops_openclaw_mcp_tool_hard_timeout",
+  "title": "OpenClaw MCP tool calls should not stop at a hard 60-second timeout",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "mcp-call-timeout",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.2",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/61786",
+    "snapshot_key": "openclaw-61786-synthetic-ops-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #61786."
+  },
+  "task": {
+    "summary": "Diagnose why long-running MCP tool calls time out at 60 seconds even when the backend is still working.",
+    "instructions": "Use the incident evidence to confirm the hard timeout behavior, localize it to the MCP call timeout path, and propose an ops-level repair plan that allows long-running tools to finish.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "Long-running MCP tools are cut off at exactly 60 seconds even though the backend continues processing.",
+    "error_logs": [
+      "callTool request failed after 60000 ms",
+      "backend tool process still running after the client timed out"
+    ],
+    "reproduction_steps": [
+      "Inspect the evidence around the fixed 60-second cutoff.",
+      "Explain what timeout path must change so longer MCP calls can complete."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models timeout diagnosis around the MCP SDK request limit."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-61786-mcp-tool-hard-timeout",
+    "description": "Synthetic MCP timeout incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "60 seconds",
+      "MCP",
+      "tool calls"
+    ],
+    "localization_keywords": [
+      "DEFAULT_REQUEST_TIMEOUT_MSEC",
+      "callTool",
+      "SDK limit",
+      "request timeout"
+    ],
+    "repair_keywords": [
+      "override sdk timeout",
+      "extend timeout",
+      "pass timeout to callTool",
+      "remove hardcoded 60s",
+      "long-running tools"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "mcp",
+      "timeouts"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #61786."
+}

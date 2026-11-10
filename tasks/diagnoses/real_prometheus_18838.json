@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_18838",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "In the time-series database head, memory grows without bound because series that only ever receive rejected out-of-order histogram samples are never reclaimed by head garbage collection, even though no samples are actually pending for them.",
+    "root_cause": "Within the histogram-append routine of the head append path, the flag that marks a series as having a commit pending is set on the wrong branch of the appendability check. When the appendability test rejects a histogram sample as out of order and returns an error, the routine treats that failed outcome as if it had succeeded and flags the series as having a pending commit. Because the sample was never actually queued into the in-progress batch, the rollback that runs after the failed append has nothing to undo and therefore never clears that flag. The garbage collector treats any series with a pending-commit flag as still in use and refuses to reclaim it, so a series that only ever sees rejected appends stays alive forever, leaking memory.",
+    "remediation": "Correct the branch logic in the histogram-append routine so the pending-commit flag is set only when the appendability check succeeds, never on the error path. Ensure that a rejected out-of-order histogram append leaves the series in a clean state with no lingering pending-commit indication, so head garbage collection can reclaim it.",
+    "evidence": [
+      "Test name: TestAppendHistogramErrorDoesNotSetPendingCommit",
+      "error log: \"tsdb head GC ran but active series count did not decrease\"",
+      "error log: \"head series count climbing despite no pending appends\""
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "In the time-series database head, memory grows without bound because series that only ever receive rejected out-of-order histogram samples are never reclaimed by head garbage collection, even though no samples are actually pending for them.",
+    "root_cause": "The garbage collector in the head determines which series to retain by comparing each series' last-activity timestamp against the retention window. When an out-of-order histogram sample is rejected, the rejection path still records the attempt as activity and advances the series' most-recent-timestamp bookkeeping. As a result the collector perpetually sees these series as recently touched and keeps them alive, even though the sample never landed in the store. The defect lies in how the rejection path updates per-series activity metadata rather than in any flag handling, so the collector's eligibility comparison never selects these series for removal.",
+    "remediation": "Adjust the out-of-order rejection path so it does not advance the series' most-recent-activity timestamp when a sample is refused, and revisit the collector's eligibility comparison so that series whose only contact was a rejected sample fall outside the retention window and become eligible for reclamation.",
+    "evidence": [
+      "Test name: TestAppendHistogramErrorDoesNotSetPendingCommit",
+      "error log: \"tsdb head GC ran but active series count did not decrease\"",
+      "error log: \"head series count climbing despite no pending appends\""
+    ]
+  },
+  "wrong_rationale": "It is plausible because head garbage collection genuinely does decide retention based on recent series activity, so blaming activity-timestamp bookkeeping on the rejection path fits the \"series kept alive across GC\" symptom and would lead an engineer to edit the collector or timestamp-update code. It is incorrect because the real defect is an inverted branch in the histogram-append routine that sets the pending-commit flag on failure, which the rollback then cannot clear \u2014 nothing to do with activity timestamps or the collector's comparison logic."
+}

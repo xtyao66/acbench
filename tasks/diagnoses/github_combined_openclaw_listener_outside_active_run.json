@@ -1,0 +1,41 @@
+{
+  "scenario_id": "github_combined_openclaw_listener_outside_active_run",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism. [re-authored to remove a leaked fix string literal]",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a listener event arrives after the current run has already ended, the listener handler treats the absence of an active run as a fatal error and raises, which surfaces as an unhandled rejection and brings the whole gateway process down.",
+    "root_cause": "The listener entry point in the agent loop assumes a run is always active whenever it is invoked. It has no guard that recognizes the legitimate case where a callback fires after its run has finished. Instead of detecting the no-active-run condition and quietly returning, the handler proceeds to raise, so any late inbound message \u2014 for example one that lands between the end of one run and the start of the next \u2014 is escalated into a hard failure that terminates the runtime rather than being treated as a harmless out-of-window event.",
+    "remediation": "Add an early check at the start of the listener path that detects when there is no active run and returns harmlessly in that case, so late events are discarded without raising. The handler should only continue into normal processing when a run is genuinely active, leaving the healthy in-run flow untouched while making out-of-window callbacks a no-op instead of a crash.",
+    "evidence": [
+      "Issue report states a message arriving after the previous run ends can crash the gateway with the listener-invoked-outside-active-run condition.",
+      "Error logs show an unhandled rejection naming the outside-active-run condition followed by the gateway main process exiting with a failure status after a new message arrives.",
+      "Root-cause material describes a missing guard and states the listener path raises instead of safely ignoring late events that arrive after the active run ends.",
+      "The crash is tied to timing \u2014 the event lands after a run has already concluded \u2014 which points at the listener treating an expected post-run state as an error rather than handling it."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The crash happens because the active-run state is torn down too early during run shutdown, so a listener callback that is still in flight finds the run reference already cleared and faults on what should have been a valid, still-active run.",
+    "root_cause": "The lifecycle that ends a run releases or clears the shared active-run state before all of that run's pending listener callbacks have drained. Because teardown and late callback delivery are not coordinated, a message that was accepted while the run was still considered live arrives a moment after the run record has been removed. The handler then sees an empty run slot and faults. The defect is therefore in the ordering and synchronization of run shutdown versus callback completion, not in how the handler reacts to genuinely-late events \u2014 the run was effectively still in progress and its state was retired prematurely.",
+    "remediation": "Coordinate run teardown with outstanding listener delivery so the active-run state is not retired until in-flight callbacks for that run have completed. Introduce a draining or reference-holding step during shutdown, or defer clearing the run state until the listener queue for that run is empty, so callbacks always observe a consistent run reference and the premature-clear race cannot occur.",
+    "evidence": [
+      "The failure is timing-dependent, occurring right around the boundary where one run ends, which is consistent with a shutdown-versus-callback ordering problem.",
+      "Error logs show the failure triggered by a newly arriving message immediately after a run completes, suggesting the inbound event and the run-end cleanup are interleaving.",
+      "The runtime models run state and a listener callback path, so a teardown that clears that state out from under an in-flight callback would produce exactly this fault.",
+      "An unhandled rejection terminating the main process indicates the faulting callback was not contained, pointing at uncoordinated lifecycle handling between the run and its listeners."
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because the symptom is genuinely timing-dependent \u2014 the crash occurs at the boundary right after a run ends \u2014 which naturally invites a race/lifecycle explanation. It points at a different mechanism (premature teardown plus uncoordinated callback draining, a synchronization/ordering bug in run shutdown) rather than the true cause (a missing guard that should treat the no-active-run state as a harmless no-op). It is not trivially refuted by the observable material since the logs only show that a late message triggers the fault, not whether the run state was legitimately gone or wrongly cleared early."
+}

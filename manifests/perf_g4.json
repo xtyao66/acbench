@@ -1,0 +1,14 @@
+{
+  "name": "perf_g4",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17131.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_grpc_6743.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_789.scenario.json"
+    }
+  ]
+}

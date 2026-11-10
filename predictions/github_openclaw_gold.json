@@ -1,0 +1,12 @@
+{
+  "_defaults": {
+    "aiops_agent_ref": "acbench.agents.gold_ops:GoldOpsAgent"
+  },
+  "github_code_openclaw_pairing_state_array_persistence": {
+    "use_gold_patch": true
+  },
+  "github_ops_openclaw_docker_healthcheck_false_unhealthy": {},
+  "github_combined_openclaw_completion_process_leak": {
+    "use_gold_patch": true
+  }
+}

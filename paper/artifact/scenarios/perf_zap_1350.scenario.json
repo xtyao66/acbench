@@ -1,0 +1,106 @@
+{
+ "scenario_id": "perf_zap_1350",
+ "title": "zapcore: faster JSON encoding",
+ "mode": "combined",
+ "service": {
+  "application": "zap",
+  "service": "zapcore",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_zap_1350"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/uber-go/zap",
+  "base_commit": "2b359631a1fabe7800806ae2b830a32f8bace57e",
+  "pr_url": "https://github.com/uber-go/zap/pull/1350",
+  "license_note": "Real upstream uber-go/zap optimization PR #1350; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up the zapcore JSON encoder's string-escaping path so it copies runs of safe characters in bulk instead of byte-by-byte, without changing the encoded output.",
+  "instructions": "Optimize the zapcore package's JSON string encoding for speed WITHOUT changing behavior. The benchmark BenchmarkZapJSON measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./zapcore"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "zapcore/json_encoder_bench_test.go",
+   "zapcore/json_encoder_impl_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "zapcore",
+   "benchmark": "BenchmarkZapJSON",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "zap-1350",
+  "description": "zapcore's safeAddString/safeAddByteString escape JSON strings one rune at a time, appending each safe byte individually instead of copying runs of unescaped characters in bulk.",
+  "target_files": [
+   "zapcore/json_encoder.go",
+   "buffer/buffer.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "zap-1350",
+  "description": "The JSON encoder's string-escaping routines in zapcore/json_encoder.go walk each input rune and append safe bytes one at a time, so encoding string-heavy log entries spends extra time in per-byte buffer appends.",
+  "detection_keywords": [
+   "per-byte append in JSON string escaping",
+   "rune-by-rune safeAddString loop",
+   "slow JSON encoding of string-heavy entries",
+   "no bulk copy of unescaped runs"
+  ],
+  "localization_keywords": [
+   "json_encoder.go",
+   "safeAddString",
+   "safeAddByteString",
+   "tryAddRuneSelf per-byte path"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Encoding log entries with many or long string fields is slower than necessary because the JSON encoder escapes strings one rune at a time, appending safe bytes individually rather than copying contiguous unescaped runs in one shot.",
+  "error_logs": [],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkZapJSON$' ./zapcore"
+  ],
+  "relevant_files": [
+   "zapcore/json_encoder.go"
+  ],
+  "notes": "Real upstream optimization PR; no fabricated profiling numbers."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "zap"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

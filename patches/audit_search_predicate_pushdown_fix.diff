@@ -1,0 +1,40 @@
+diff --git a/src/audit_search/search.py b/src/audit_search/search.py
+index eca45a4..446bd61 100644
+--- a/src/audit_search/search.py
++++ b/src/audit_search/search.py
+@@ -8,11 +8,7 @@ into the response rows.
+ 
+ from __future__ import annotations
+ 
+-from audit_search.store import SEVERITY_ORDER, EventStore
+-
+-
+-def _severity_rank(severity: str) -> int:
+-    return SEVERITY_ORDER.index(severity)
++from audit_search.store import EventStore
+ 
+ 
+ def search_audit_events(
+@@ -27,18 +23,10 @@ def search_audit_events(
+     timestamp and exposes only the public event fields.
+     """
+ 
+-    threshold = _severity_rank(min_severity)
+-
+-    # Pull the entire table out of the store, then filter in Python. For a table
+-    # with millions of rows this materializes every row even when the scoped
+-    # query matches only a handful.
+-    all_rows = store.scan_all()
+-    matches = [
+-        row
+-        for row in all_rows
+-        if row["tenant_id"] == tenant_id
+-        and _severity_rank(str(row["severity"])) >= threshold
+-    ]
++    # Push the tenant + severity predicate into the store query so only matching
++    # rows are materialized, instead of scanning the whole table and filtering
++    # in Python.
++    matches = store.query(tenant_id, min_severity)
+ 
+     matches.sort(key=lambda row: row["timestamp"], reverse=True)
+     return [

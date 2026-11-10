@@ -1,0 +1,153 @@
+{
+  "scenario_id": "combined_feature_normalize_scoring_cpu",
+  "title": "Risk-scoring CPU incident with hoisted loop-invariant repair",
+  "mode": "combined",
+  "service": {
+    "application": "feature-scorer",
+    "service": "risk-scoring",
+    "deployment": "local",
+    "repository_path": "services/fixtures/feature_normalize_in_loop_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "feature-normalize-scoring-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a risk-scoring CPU incident and remove the loop-invariant statistics recompute from the per-applicant scoring loop.",
+    "instructions": "Use the incident clues to localize the redundant per-item recomputation, apply a performance repair, and restore all scoring tests including the cohort-pass-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the scorer must process a batch while computing the reference-cohort column statistics a number of times that does not grow with the batch size."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the risk-scoring workers saturated CPU and missed their batch SLO whenever batch sizes grew. CPU time per batch scales with the batch size multiplied by the size of the reference cohort, even though the cohort never changes during a batch.",
+    "error_logs": [
+      "alerts/scoring_cpu.log: worker CPU time per batch grows with batch_size * cohort_size; cohort is static for the whole batch",
+      "profile: a reference-cohort statistics computation is re-entered once per scored item and dominates the flame graph"
+    ],
+    "reproduction_steps": [
+      "Inspect the risk-scoring fixture and run the unit tests.",
+      "Use the profile clues to localize the redundant per-item recomputation before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/feature_scorer/",
+      "tests/test_scorer.py"
+    ],
+    "notes": "The incident points at work that is repeated for every scored item but produces the same result each time, not at the size of the reference cohort itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-feature-scorer-scoring-cpu-incident-001",
+    "description": "Synthetic risk-scoring CPU incident tied to the feature_normalize_in_loop fixture.",
+    "detection_keywords": [
+      "CPU saturation",
+      "per-batch CPU scales with batch size times cohort size",
+      "throughput collapses as batch size grows",
+      "high CPU on the scoring path"
+    ],
+    "localization_keywords": [
+      "an input-independent computation is repeated once per item",
+      "the same result is recomputed every iteration of the loop",
+      "a static reference dataset is rescanned for every scored item",
+      "redundant work inside the per-item loop",
+      "risk-scoring"
+    ],
+    "repair_keywords": [
+      "hoist the loop-invariant computation out of the loop",
+      "compute the cohort statistics once before the loop",
+      "cache the input-independent result and reuse it",
+      "move the invariant work above the per-item loop",
+      "eliminate the per-item recomputation of a constant value",
+      "reuse the precomputed statistics across all items",
+      "compute once then reuse"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "feature-scorer-loop-invariant-recompute-001",
+    "description": "The scorer recomputes the reference-cohort column statistics inside its per-applicant loop even though they depend only on the cohort, making the batch cost O(batch * cohort) instead of O(cohort) + O(batch).",
+    "target_files": [
+      "src/feature_scorer/scorer.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_scorer.FeatureScorerTests::test_cohort_passes_independent_of_batch_size"
+    ],
+    "pass_to_pass": [
+      "test_scorer.FeatureScorerTests::test_scores_match_reference_z_scores",
+      "test_scorer.FeatureScorerTests::test_preserves_input_order_and_count",
+      "test_scorer.FeatureScorerTests::test_empty_batch_returns_empty",
+      "test_scorer.FeatureScorerTests::test_single_applicant_matches_reference"
+    ],
+    "required_tests": [
+      "test_scorer.FeatureScorerTests::test_cohort_passes_independent_of_batch_size",
+      "test_scorer.FeatureScorerTests::test_scores_match_reference_z_scores",
+      "test_scorer.FeatureScorerTests::test_preserves_input_order_and_count",
+      "test_scorer.FeatureScorerTests::test_empty_batch_returns_empty",
+      "test_scorer.FeatureScorerTests::test_single_applicant_matches_reference"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that hoists the loop-invariant cohort-statistics computation out of the per-applicant scoring loop."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "hoist_invariant"
+  ],
+  "notes": "Combined risk-scoring CPU incident and hoisted loop-invariant repair task.",
+  "gold_patch_path": "patches/feature_normalize_hoist_fix.diff"
+}

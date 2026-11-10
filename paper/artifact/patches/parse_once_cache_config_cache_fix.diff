@@ -1,0 +1,52 @@
+diff --git a/src/route_config/resolver.py b/src/route_config/resolver.py
+index 6640a02..aa842ad 100644
+--- a/src/route_config/resolver.py
++++ b/src/route_config/resolver.py
+@@ -31,23 +31,28 @@ class RouteResolver:
+     """
+ 
+     def __init__(self, raw_config: str) -> None:
+-        # The serialized JSON config document, kept as text. The buggy resolver
+-        # re-parses this string from scratch on every call below.
++        # The serialized JSON config document, kept as text.
+         self._raw_config = raw_config
++        # Cached deserialized config, parsed once lazily on first use and reused
++        # for every subsequent request instead of re-parsing the document.
++        self._config: dict | None = None
+         # Number of times the config document has been deserialized. A counting
+         # oracle uses this to distinguish "parse once" from "parse per call".
+         self.parse_count = 0
+ 
+     def _load_config(self) -> dict:
+-        """Deserialize the config document.
++        """Return the deserialized config document, parsing it at most once.
+ 
+-        This is the expensive, *repeated* step: ``json.loads`` walks the entire
+-        JSON text and rebuilds every route object. The buggy resolver invokes
+-        this on every request instead of parsing once and caching the result.
++        ``json.loads`` walks the entire JSON text and rebuilds every route
++        object, so it is only paid on the first call; the parsed result is then
++        cached and reused for every subsequent request. This turns a per-request
++        parse into a single parse for the resolver's lifetime.
+         """
+ 
+-        self.parse_count += 1
+-        return json.loads(self._raw_config)
++        if self._config is None:
++            self.parse_count += 1
++            self._config = json.loads(self._raw_config)
++        return self._config
+ 
+     @staticmethod
+     def _effective_policy(config: dict, entry: dict) -> dict:
+@@ -105,7 +110,7 @@ class RouteResolver:
+ 
+         policy = self.resolve_policy(path)
+         if policy is None:
+-            # Unknown route: re-load is unavoidable here too, mirroring the per
+-            # call parse; fall back to the configured default backend.
+-            return json.loads(self._raw_config)["default_backend"]
++            # Unknown route: serve the configured default backend from the
++            # cached parsed config instead of re-parsing the document.
++            return self._load_config()["default_backend"]
+         return policy["backend_pool"]

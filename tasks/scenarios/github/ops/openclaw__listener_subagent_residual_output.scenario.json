@@ -1,0 +1,112 @@
+{
+  "scenario_id": "github_ops_openclaw_listener_subagent_residual_output",
+  "title": "OpenClaw should not crash when residual subagent output arrives after the active run ends",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62793",
+    "snapshot_key": "openclaw-62793-synthetic-ops-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #62793."
+  },
+  "task": {
+    "summary": "Diagnose why residual subagent output can crash the gateway after the active run ends.",
+    "instructions": "Use the subagent incident evidence to confirm the late-output crash, localize it to missing active-run guards around listener updates, and propose an ops-level repair plan that safely discards residual output.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "Residual subagent stdout and stderr can arrive after a run ends and crash the gateway with `Agent listener invoked outside active run`.",
+    "error_logs": [
+      "subagent residual output triggered Unhandled promise rejection",
+      "Gateway crash interrupted all active sessions"
+    ],
+    "reproduction_steps": [
+      "Inspect the residual-output evidence from subagent runs.",
+      "Explain where the listener lifecycle should drop updates once the run is over."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models listener-runtime incident triage around residual subagent output."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62793-subagent-residual-output-ops",
+    "description": "Synthetic residual-output incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "subagent",
+      "residual output",
+      "outside active run"
+    ],
+    "localization_keywords": [
+      "listener",
+      "active run guard",
+      "stdout",
+      "stderr"
+    ],
+    "repair_keywords": [
+      "discard residual output",
+      "guard late events",
+      "prevent gateway crash",
+      "listener lifecycle"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "subagents",
+      "listener-runtime"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #62793."
+}

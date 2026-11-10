@@ -1,0 +1,114 @@
+{
+ "scenario_id": "perf_prometheus_17439",
+ "title": "Intersecting TSDB postings lists is slow: redundant Seeks and binary searches dominate the intersection hot loop",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "index",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_prometheus_17439"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "b7aae061817e5dd15b7aa9dde0f2b4ce3f261937",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/17439",
+  "license_note": "Real upstream prometheus optimization PR #17439; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up intersection of TSDB index postings lists by eliminating redundant Seek calls and binary searches in the intersectPostings.Next and ListPostings.Seek hot paths.",
+  "instructions": "Optimize the tsdb/index package for speed WITHOUT changing behavior. The benchmark BenchmarkIntersect measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./tsdb/index"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "tsdb/index/postings_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "tsdb/index",
+   "benchmark": "BenchmarkIntersect",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": true,
+   "gold_speedup": 1.32
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-17439",
+  "description": "intersectPostings.Next always falls through to a full Seek and ListPostings.Seek always runs slices.BinarySearch even when the next element already matches.",
+  "target_files": [
+   "tsdb/index/postings.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-17439",
+  "description": "Profiling shows CPU concentrated in postings intersection: repeated Seek and binary-search work on aligned posting iterators.",
+  "detection_keywords": [
+   "high CPU in intersection hot loop",
+   "slow ns/op in BenchmarkIntersect",
+   "CPU time in slices.BinarySearch",
+   "redundant Seek calls per iteration"
+  ],
+  "localization_keywords": [
+   "postings.go",
+   "intersectPostings.Next loop",
+   "ListPostings.Seek binary search",
+   "Intersect hot path",
+   "slices.BinarySearch on it.list"
+  ],
+  "repair_keywords": [
+   "fast-path allEqual to skip redundant Seek",
+   "advance first posting then match others",
+   "check next list item before binary search",
+   "avoid slices.BinarySearch when it.list[0] >= x",
+   "track at vs target to defer Seek"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Intersecting several postings lists in the TSDB index is CPU-bound; the intersection loop spends a lot of time re-seeking iterators and binary-searching lists that are already aligned.",
+  "error_logs": [
+   "pprof: 41.2% cpu github.com/prometheus/prometheus/tsdb/index.(*ListPostings).Seek -> slices.BinarySearch[...] in BenchmarkIntersect/LongPostings2"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkIntersect$' ./tsdb/index"
+  ],
+  "relevant_files": [
+   "tsdb/index/postings.go"
+  ],
+  "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

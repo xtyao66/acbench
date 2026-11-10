@@ -1,0 +1,12 @@
+--- a/src/openclaw_listener_runtime/agent_loop.py
++++ b/src/openclaw_listener_runtime/agent_loop.py
+@@
+     def process_listener_event(self, channel: str, payload: str) -> str:
+         if self.active_run_id is None:
+-            raise RuntimeError("Agent listener invoked outside active run")
++            self.warnings.append(
++                "Event received outside active run, skipping listeners"
++            )
++            return "skipped"
+         self.processed_events.append((channel, payload))
+         return "processed"

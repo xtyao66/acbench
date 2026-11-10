@@ -1,0 +1,118 @@
+{
+ "scenario_id": "real_prometheus_15141",
+ "title": "MemPostings.Add mutates a postings slice in place while sorting, corrupting results held by concurrent readers from Get.",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "index",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_prometheus_15141"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "720a2599a609",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/15141",
+  "license_note": "Real upstream prometheus PR #15141; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "MemPostings.Add mutates a postings slice in place while sorting, corrupting results held by concurrent readers from Get.",
+  "instructions": "Fix the defect in the index package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -race -run '^TestMemPostings_Unordered_Add_Get$' ./tsdb/index"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "index.TestMemPostings_Unordered_Add_Get"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "index.TestMemPostings_Unordered_Add_Get"
+  ],
+  "forbidden_paths": [
+   "tsdb/index/postings_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-15141",
+  "description": "MemPostings.addFor repairs unordered inserts by sorting the postings slice in place, mutating backing memory that earlier Get callers still reference.",
+  "target_files": [
+   "tsdb/index/postings.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-15141",
+  "description": "Concurrent TSDB queries intermittently return wrong or corrupted postings because an in-place sort during Add mutates a slice a reader is still using.",
+  "detection_keywords": [
+   "data race",
+   "wrong query results",
+   "corrupted postings",
+   "intermittent missing series",
+   "race detector failure",
+   "non-deterministic results under concurrency"
+  ],
+  "localization_keywords": [
+   "postings.go",
+   "MemPostings.addFor",
+   "appendWithExponentialGrowth in-place append",
+   "in-place sort repairs order violation",
+   "slice shared with Get readers",
+   "out-of-order SeriesRef insert",
+   "mutating backing array still referenced by readers",
+   "ordered repair loop overwrites live slice"
+  ],
+  "repair_keywords": [
+   "copy slice before sorting",
+   "return copied flag from appendWithExponentialGrowth",
+   "skip repair when already ordered or single element",
+   "only sort a freshly allocated slice",
+   "avoid mutating slice handed to readers"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Under concurrent ingestion and querying, queries intermittently return wrong or missing series, and the race detector flags a data race in the TSDB index postings.",
+  "error_logs": [
+   "WARNING: DATA RACE in tsdb/index postings",
+   "query returned fewer series than expected for {__name__=\"test\"}",
+   "intermittent inconsistent results when ingesting out-of-order series IDs during reads"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestMemPostings_Unordered_Add_Get$' ./tsdb/index"
+  ],
+  "relevant_files": [
+   "tsdb/index/postings.go",
+   "tsdb/index/postings_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

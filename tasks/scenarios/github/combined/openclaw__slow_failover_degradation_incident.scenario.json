@@ -1,0 +1,148 @@
+{
+  "scenario_id": "github_combined_openclaw_slow_failover_degradation",
+  "title": "OpenClaw main lane should fail over before prolonged user-facing degradation",
+  "mode": "combined",
+  "service": {
+    "application": "openclaw",
+    "service": "failover-policy",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_failover_policy_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.7",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62848",
+    "snapshot_key": "openclaw-62848-localized-fixture-v2",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #62848."
+  },
+  "task": {
+    "summary": "Triage slow main-lane failover and repair the policy so repeated transport errors fall back sooner.",
+    "instructions": "Use the incident clues to localize why transport errors keep retrying for too long, repair the failover threshold so the user-facing lane degrades less, and preserve the healthy retry and non-transport behaviors.",
+    "acceptance_notes": "Both ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Repeated transport errors in the main session lane visibly spam connection errors for more than 20 seconds before fallback finally succeeds.",
+    "error_logs": [
+      "embedded run agent end: provider=arcee error=network connection error",
+      "embedded run failover decision: decision=fallback_model reason=timeout after ~23s",
+      "lane task error: lane=main durationMs=23552 error=FailoverError"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_failover_policy/runtime.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_failover_policy/runtime.py",
+      "tests/test_runtime.py"
+    ],
+    "notes": "This fixture models the failover threshold behind the user-facing degradation."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62848-slow-failover-degradation",
+    "description": "Synthetic failover/degradation incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "connection error",
+      "fallback",
+      "main lane"
+    ],
+    "localization_keywords": [
+      "retry loop",
+      "transport failures",
+      "failover policy",
+      "threshold"
+    ],
+    "repair_keywords": [
+      "fail fast",
+      "earlier fallback",
+      "consecutive transport errors",
+      "reduce threshold",
+      "restore responsiveness"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-62848-failover-threshold",
+    "description": "The main-lane failover threshold waits one transport failure too long before switching to fallback.",
+    "target_files": [
+      "src/openclaw_failover_policy/runtime.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_runtime.FailoverPolicyTests::test_three_transport_errors_trigger_immediate_fallback"
+    ],
+    "pass_to_pass": [
+      "test_runtime.FailoverPolicyTests::test_single_transport_error_still_retries",
+      "test_runtime.FailoverPolicyTests::test_non_transport_errors_surface_immediately"
+    ],
+    "required_tests": [
+      "test_runtime.FailoverPolicyTests::test_three_transport_errors_trigger_immediate_fallback",
+      "test_runtime.FailoverPolicyTests::test_single_transport_error_still_retries",
+      "test_runtime.FailoverPolicyTests::test_non_transport_errors_surface_immediately"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This GitHub-derived reproduction expects incident localization and a code repair."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "failover",
+      "lane-policy"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "combined"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #62848.",
+  "gold_patch_path": "patches/github/openclaw_failover_fast_fallback_fix.diff"
+}

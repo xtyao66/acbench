@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_pairing_state_array_approval",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Docker-based pairing gets stuck indefinitely reporting that pairing is required, and approval attempts return an empty/null approval result even though a request id is present. The websocket connection is closed before connect with a pairing-required reason.",
+    "root_cause": "The pairing-state loading path in the pairing state module reads the persisted pending and paired state from disk without validating its shape. When those files have drifted from the expected key-to-value mapping form into a list form, the loader hands the list straight through to the approval logic, which expects to look records up by key. Because a list cannot be addressed by key the way a mapping can, the approval routine can neither find nor record the request, so the approval never takes effect and the connection keeps being rejected as unpaired.",
+    "remediation": "In the state-loading routine, detect when the loaded content is a list rather than a mapping and normalize it back into an empty mapping (or otherwise coerce it into the expected keyed structure) before the approval logic runs, while leaving healthy mapping-backed state untouched.",
+    "evidence": [
+      "[PAIR-APPROVE-RESULT] approved=null request_id=req-001",
+      "[ws] closed before connect code=1008 reason=pairing required",
+      "Test failure exercised via tests/test_pairing_state.py"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Docker-based pairing gets stuck indefinitely reporting that pairing is required, and approval attempts return an empty/null approval result even though a request id is present. The websocket connection is closed before connect with a pairing-required reason.",
+    "root_cause": "The approval write-back is not being durably persisted: after the approval routine moves a request from the pending collection into the paired collection in memory, the change is never flushed to disk, or it is written to a temporary location that the next connection attempt does not read from. As a result each new connection reloads the old on-disk state, never sees the approval, and re-issues the pairing-required rejection.",
+    "remediation": "Ensure the approval routine writes the updated pending and paired state back to disk atomically after each approval, flushing and syncing the files so the next connection load reflects the granted pairing.",
+    "evidence": [
+      "[PAIR-APPROVE-RESULT] approved=null request_id=req-001",
+      "[ws] closed before connect code=1008 reason=pairing required",
+      "Test failure exercised via tests/test_pairing_state.py"
+    ]
+  },
+  "wrong_rationale": "The persistence-flush theory is plausible because a stuck \"approval never sticks\" symptom commonly stems from non-durable writes, and it fits the same logs without contradiction. It misleads by pointing at the save/write path rather than the true cause, which is that the loader fails to coerce list-shaped state back into a keyed mapping before approval logic ever runs."
+}

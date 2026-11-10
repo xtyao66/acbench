@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_18928",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Range and subquery evaluations over native histograms enforce the per-query sample limit incorrectly, accepting or rejecting queries at the wrong threshold because the running tally of processed samples drifts from the true count.",
+    "root_cause": "In the query engine's matrix-iteration slicing routine, when older histogram points that fall before the window start are trimmed away, the routine credits the running sample counter using the size of the points that remain after trimming rather than the size of the points that were actually dropped. Because native histograms have variable per-point sizes (unlike plain floating-point samples), measuring the wrong portion of the buffer makes the adjustment to the cumulative sample count wrong, so the engine's notion of how many samples it has loaded steadily diverges from reality. That corrupted tally is what gets compared against the per-query limit, so the limit fires at the wrong moment.",
+    "remediation": "Make the sample-accounting adjustment in the slicing routine measure the size of the points that are being discarded from the front of the buffer, not the size of the points that survive the trim, so that the cumulative processed-sample counter is decremented by the correct amount for variable-size histogram points.",
+    "evidence": [
+      "promql: expected MaxSamples=91 to be respected, but sample accounting diverged",
+      "currentSamples underflow/drift while evaluating max_over_time over native histograms",
+      "go test -run '^TestMaxQuerySamples$' ./promql"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Range and subquery evaluations over native histograms enforce the per-query sample limit incorrectly, accepting or rejecting queries at the wrong threshold because the running tally of processed samples drifts from the true count.",
+    "root_cause": "When the engine first materializes a native histogram point into its working buffer, it estimates the memory footprint of that point using a flat per-point cost rather than walking the histogram's bucket layout. Native histograms vary in bucket count, so a fixed cost over- or under-states the true size at the moment each point is added to the running sample tally. The accumulated estimation error then makes the cumulative count compared against the per-query limit inaccurate, so the limit trips at the wrong threshold during range and subquery evaluation.",
+    "remediation": "Replace the flat per-point cost used when a histogram point is first appended to the working buffer with a size computation that accounts for the actual number of buckets and spans in each histogram, so that every point contributes its true footprint to the running tally from the start.",
+    "evidence": [
+      "promql: expected MaxSamples=91 to be respected, but sample accounting diverged",
+      "currentSamples underflow/drift while evaluating max_over_time over native histograms",
+      "go test -run '^TestMaxQuerySamples$' ./promql"
+    ]
+  },
+  "wrong_rationale": "Pointing at the initial size estimate when histogram points are added is plausible because variable-size native histograms genuinely make naive per-point costing wrong, and it explains the divergence symptom; but the real defect is in the trimming path of the slicing routine measuring the surviving buffer instead of the dropped points, so fixing the add-time costing would leave the drift on trim untouched."
+}

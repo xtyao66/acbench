@@ -1,0 +1,12 @@
+ACBench: Agentic Cloud Benchmark
+Copyright 2026 ACBench Team
+
+This product includes software developed by the ACBench Team.
+
+The source code in this repository is licensed under the Apache License,
+Version 2.0 (see LICENSE).
+
+The benchmark data — scenarios, fixtures, rubrics, gold patches, and related
+task-bank artifacts under tasks/, services/, patches/, predictions/, and
+manifests/ — is licensed under the Creative Commons Attribution 4.0
+International License (CC BY 4.0; see LICENSE-DATA).

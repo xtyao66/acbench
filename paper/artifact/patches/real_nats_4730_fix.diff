@@ -1,0 +1,13 @@
+diff --git a/server/auth.go b/server/auth.go
+index b8e82abe415..7a0f93e217d 100644
+--- a/server/auth.go
++++ b/server/auth.go
+@@ -525,7 +525,7 @@ func processUserPermissionsTemplate(lim jwt.UserPermissionLimits, ujwt *jwt.User
+ 				for _, valueList := range nArrayCartesianProduct(tagValues...) {
+ 					b := strings.Builder{}
+ 					for i, token := range newTokens {
+-						if token == _EMPTY_ {
++						if token == _EMPTY_ && len(valueList) > 0 {
+ 							b.WriteString(valueList[0])
+ 							valueList = valueList[1:]
+ 						} else {

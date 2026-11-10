@@ -1,0 +1,163 @@
+{
+  "scenario_id": "combined_score_recompute_risk_cpu",
+  "title": "Risk-scoring CPU incident with memoized pure-model repair",
+  "mode": "combined",
+  "service": {
+    "application": "score-recompute",
+    "service": "risk-scoring-ingestion",
+    "deployment": "local",
+    "repository_path": "services/fixtures/score_recompute_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "score-recompute-risk-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a risk-scoring CPU-saturation incident and eliminate the redundant recomputation of a pure scoring model on repeated inputs.",
+    "instructions": "Use the incident clues to localize the CPU bottleneck, apply a performance repair, and restore all scoring tests. The optimization is graded on a real measured speedup from bench.py as well as on behavioral correctness.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the worker must run the expensive scoring model at most once per distinct profile key while producing byte-for-byte identical scored output."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the risk-scoring ingestion workers saturated CPU and blew their p99 latency SLO during traffic spikes. CPU time scales with the raw event count even though the spikes come from a small number of repeat actors, so the same profile keys recur thousands of times within a single batch.",
+    "error_logs": [
+      "alerts/risk_scoring_cpu.log: worker CPU per batch scales with total event count, not with the number of distinct actors in the batch",
+      "profile: one hot, deterministic pure function dominates the flame graph; it is invoked once per event and almost all invocations repeat arguments seen earlier in the same batch"
+    ],
+    "reproduction_steps": [
+      "Inspect the risk-scoring fixture and run the unit tests.",
+      "Run bench.py to reproduce the hot path, then use the profile clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/score_recompute/",
+      "tests/test_handler.py",
+      "bench.py"
+    ],
+    "notes": "The incident points at repeated work inside the request path on inputs that recur, not at the scoring model being irreducibly slow on a single distinct input."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-score-recompute-risk-cpu-incident-001",
+    "description": "Synthetic risk-scoring CPU-saturation incident tied to the score_recompute fixture.",
+    "detection_keywords": [
+      "p99 latency",
+      "CPU scales with total event count",
+      "CPU saturation during traffic spikes"
+    ],
+    "localization_keywords": [
+      "redundant recomputation of a deterministic function",
+      "pure function recomputed per event",
+      "repeated arguments in the request path",
+      "cost scales with input volume not with distinct inputs",
+      "risk-scoring-ingestion"
+    ],
+    "repair_keywords": [
+      "memoize the pure function",
+      "cache results per distinct input",
+      "compute once per unique key",
+      "reuse the cached value for repeats",
+      "eliminate the per-event recomputation",
+      "functools lru_cache on the pure scorer",
+      "cached computation keyed by input"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "score-recompute-missing-memoization-001",
+    "description": "The scoring handler invokes the expensive pure risk model once per event instead of memoizing the result per distinct profile key, so CPU cost scales with event volume rather than with the number of distinct keys.",
+    "target_files": [
+      "src/score_recompute/handler.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "PYTHONPATH=src python -m pytest tests/ -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "measured_performance",
+    "perf": {
+      "bench_cmd": "PYTHONPATH=src python bench.py",
+      "metric": "elapsed_s",
+      "reduction": "min",
+      "reps": 7,
+      "warmup": 2,
+      "speedup_formula": "baseline_min / candidate_min",
+      "target_speedup_range": [5, 30]
+    },
+    "fail_to_pass": [],
+    "pass_to_pass": [
+      "test_handler.ScoreEventsTests::test_scores_every_event_with_pinned_values",
+      "test_handler.ScoreEventsTests::test_repeated_keys_get_identical_scores_in_order",
+      "test_handler.ScoreEventsTests::test_empty_batch_returns_empty",
+      "test_handler.ScoreEventsTests::test_unknown_and_empty_keys_are_scored_not_skipped",
+      "test_handler.ScoreEventsTests::test_handler_matches_direct_model_for_a_wide_key_set"
+    ],
+    "required_tests": [
+      "test_handler.ScoreEventsTests::test_scores_every_event_with_pinned_values",
+      "test_handler.ScoreEventsTests::test_repeated_keys_get_identical_scores_in_order",
+      "test_handler.ScoreEventsTests::test_empty_batch_returns_empty",
+      "test_handler.ScoreEventsTests::test_unknown_and_empty_keys_are_scored_not_skipped",
+      "test_handler.ScoreEventsTests::test_handler_matches_direct_model_for_a_wide_key_set"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "Measured-performance task: incident localization followed by a performance fix that memoizes an expensive pure function recomputed on repeated inputs. Graded on real measured speedup (bench.py timed REPS times, min) gated on behavioral correctness."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "pytest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success",
+    "measured_speedup"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "measured_performance",
+    "memoize_recompute"
+  ],
+  "notes": "Combined risk-scoring CPU incident and memoized pure-model repair task, graded on a real measured speedup on real hardware.",
+  "gold_patch_path": "patches/score_recompute_memoize_lru_cache_fix.diff"
+}

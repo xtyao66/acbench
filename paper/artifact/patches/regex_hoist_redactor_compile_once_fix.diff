@@ -1,0 +1,24 @@
+diff --git a/src/payload_redactor/redactor.py b/src/payload_redactor/redactor.py
+index ae0570b..d53ec1f 100644
+--- a/src/payload_redactor/redactor.py
++++ b/src/payload_redactor/redactor.py
+@@ -36,14 +36,13 @@ def redact_records(records: list[str]) -> list[str]:
+     unchanged.
+     """
+ 
++    # Assemble (parse + compile) the fixed redaction ruleset ONCE for the whole
++    # batch, then reuse the compiled matchers for every record. The ruleset
++    # never changes per record, so hoisting the compile out of the loop drops
++    # the per-record recompilation cost from O(N) ruleset builds to exactly one.
++    compiled = compile_ruleset(REDACTION_RULES)
+     redacted: list[str] = []
+     for record in records:
+-        # Re-assembling (parsing + compiling) the fixed redaction ruleset on
+-        # every record: this rebuilds every matcher from scratch once per
+-        # record, so a batch of N records invokes the regex compiler N times
+-        # over even though the ruleset never changes. The compilation cost is
+-        # pure overhead that scales linearly with the batch size.
+-        compiled = compile_ruleset(REDACTION_RULES)
+         scrubbed = record
+         for matcher in compiled:
+             scrubbed = matcher.sub(REDACTION, scrubbed)

@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/xtyao66/acbench/schemas/scenario.schema.json",
+  "title": "ACBench Scenario",
+  "description": "The ACBench scenario format (ScenarioSpec): one record describing an ops incident and/or a code defect for a cloud-engineering agent task. This is the portable data contract — author scenarios against it to build a third-party ACBench task pack.",
+  "type": "object",
+  "required": ["scenario_id", "title", "mode", "service"],
+  "properties": {
+    "schema_version": { "type": "string", "default": "1.0", "description": "Scenario format version." },
+    "scenario_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["ops_only", "code_only", "combined"] },
+    "service": {
+      "type": "object",
+      "required": ["application", "service"],
+      "properties": {
+        "application": { "type": "string" },
+        "service": { "type": "string" },
+        "deployment": { "type": "string", "default": "k8s" },
+        "repository_path": { "type": "string", "description": "Repo-relative path to a local fixture repo (required for local_fixture code/combined scenarios)." }
+      }
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["local_fixture", "github"], "default": "local_fixture" },
+        "repo_url": { "type": "string" },
+        "base_commit": { "type": "string" },
+        "issue_url": { "type": "string" },
+        "snapshot_key": { "type": "string" },
+        "license_note": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "github" } } },
+          "then": { "required": ["repo_url", "base_commit"] }
+        }
+      ]
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "instructions": { "type": "string" },
+        "acceptance_notes": { "type": "string" }
+      }
+    },
+    "visible_context": {
+      "type": "object",
+      "description": "Everything the agent is shown. Grading keywords that appear here are treated as 'leaked' and excluded from the ops score.",
+      "properties": {
+        "issue_text": { "type": "string" },
+        "error_logs": { "type": "array", "items": { "type": "string" } },
+        "reproduction_steps": { "type": "array", "items": { "type": "string" } },
+        "relevant_files": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    },
+    "ops_fault": {
+      "type": "object",
+      "description": "Required for ops_only and combined scenarios.",
+      "required": ["source", "problem_id"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1, "description": "Provenance identifier (e.g. your task-pack name); not restricted to 'acbench'." },
+        "problem_id": { "type": "string" },
+        "description": { "type": "string" },
+        "detection_keywords": { "type": "array", "items": { "type": "string" }, "description": "Include at least one keyword NOT present in visible_context, or the stage is excluded from scoring as all-leaked." },
+        "localization_keywords": { "type": "array", "items": { "type": "string" } },
+        "repair_keywords": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "code_fault": {
+      "type": "object",
+      "description": "Required for code_only and combined scenarios.",
+      "required": ["source", "defect_id"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "defect_id": { "type": "string" },
+        "description": { "type": "string" },
+        "target_files": { "type": "array", "items": { "type": "string" } },
+        "instance_path": { "type": "string" },
+        "platform": { "type": "string" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "description": "Required (rebuild_cmds or test_cmds) for code_only and combined scenarios.",
+      "properties": {
+        "rebuild_cmds": { "type": "array", "items": { "type": "string" } },
+        "test_cmds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "success_criteria": {
+      "type": "object",
+      "properties": {
+        "require_detection": { "type": "boolean", "default": false },
+        "require_localization": { "type": "boolean", "default": false },
+        "require_repair": { "type": "boolean", "default": false },
+        "require_build_success": { "type": "boolean", "default": false },
+        "require_test_success": { "type": "boolean", "default": false },
+        "require_deploy_success": { "type": "boolean", "default": false }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "properties": {
+        "strategy": { "type": "string", "default": "behavioral" },
+        "fail_to_pass": { "type": "array", "items": { "type": "string" }, "description": "Named oracle test IDs that must flip fail->pass." },
+        "pass_to_pass": { "type": "array", "items": { "type": "string" }, "description": "Named oracle test IDs that must stay passing (no regression)." },
+        "required_tests": { "type": "array", "items": { "type": "string" } },
+        "forbidden_paths": { "type": "array", "items": { "type": "string" }, "description": "Path prefixes/globs a patch may not modify (e.g. 'tests/'); patches touching them are rejected." },
+        "allow_alternative_fixes": { "type": "boolean", "default": true }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "max_runtime_minutes": { "type": "number", "minimum": 0 },
+        "max_agent_steps": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard", "expert"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      }
+    },
+    "metrics": { "type": "array", "items": { "type": "string" } },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "string" },
+    "gold_patch_path": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "enum": ["ops_only", "combined"] } } },
+      "then": { "required": ["ops_fault"] }
+    },
+    {
+      "if": { "properties": { "mode": { "enum": ["code_only", "combined"] } } },
+      "then": { "required": ["code_fault", "build"] }
+    }
+  ]
+}

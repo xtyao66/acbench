@@ -1,0 +1,33 @@
+diff --git a/src/group_metrics/aggregator.py b/src/group_metrics/aggregator.py
+index a690539..6ffb294 100644
+--- a/src/group_metrics/aggregator.py
++++ b/src/group_metrics/aggregator.py
+@@ -40,21 +40,19 @@ def aggregate_by_tenant(records: list[dict[str, object]]) -> list[dict[str, int
+     """
+ 
+     groups: list[Group] = []
++    # Index groups by key so finding a record's group is an O(1) hash lookup
++    # instead of a linear scan over the growing group list. The ``groups`` list
++    # still drives output order: a tenant is appended the first time it is seen,
++    # so first-seen ordering is preserved exactly.
++    by_key: dict[str, Group] = {}
+     for record in records:
+         tenant_id = record["tenant_id"]
+         units = record["units"]
+ 
+-        # "Find the group" by linear scan: walk the whole list of groups built
+-        # so far looking for the one whose key matches this tenant. As distinct
+-        # tenants accumulate, this scan grows with the batch, so rolling up N
+-        # records across G tenants costs O(N*G) -- quadratic when G grows with N.
+-        target = None
+-        for group in groups:
+-            if group.key == tenant_id:
+-                target = group
+-                break
++        target = by_key.get(tenant_id)
+         if target is None:
+             target = Group(tenant_id)
++            by_key[tenant_id] = target
+             groups.append(target)
+ 
+         target.add(units)

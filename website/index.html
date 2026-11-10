@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ACBench | Agentic Cloud Benchmark</title>
+    <meta
+      name="description"
+      content="ACBench is a standalone benchmark for evaluating AI agents on code repair, ops incident analysis, and combined cloud engineering tasks."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="brand" href="#top" aria-label="ACBench home">
+          <span class="brand-mark">AC</span>
+          <span>ACBench</span>
+        </a>
+        <div class="nav-links">
+          <a href="#leaderboard">Leaderboard</a>
+          <a href="#overview">Overview</a>
+          <a href="#tasks">Tasks</a>
+          <a href="#results">Results</a>
+          <a href="#citation">Citation</a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-media" aria-hidden="true">
+          <img src="assets/acbench-hero.png" alt="" />
+        </div>
+        <div class="hero-content">
+          <p class="eyebrow">Agentic Cloud Benchmark</p>
+          <h1>ACBench</h1>
+          <p class="subtitle">
+            Evaluating AI agents on code repair, ops incident analysis, and
+            combined cloud engineering workflows.
+          </p>
+          <p class="authors">
+            ACBench Team
+          </p>
+          <p class="abstract">
+            ACBench is a standalone benchmark built around reproducible
+            engineering scenarios. It measures whether agents can patch buggy
+            repositories, diagnose incident-style failures, and solve
+            end-to-end tasks that require both operational reasoning and code
+            changes.
+          </p>
+          <div class="hero-actions" aria-label="Project links">
+            <a
+              class="button primary"
+              href="https://github.com/xtyao66/acbench/blob/main/README.md"
+            >
+              README
+            </a>
+            <a
+              class="button"
+              href="https://github.com/xtyao66/acbench/blob/main/docs/QUICKSTART.md"
+            >
+              Quick Start
+            </a>
+            <a
+              class="button"
+              href="https://github.com/xtyao66/acbench/blob/main/tasks/README.md"
+            >
+              Task Bank
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats-band" aria-label="Benchmark summary">
+        <div class="stat">
+          <strong>61</strong>
+          <span>Total Scenarios</span>
+        </div>
+        <div class="stat">
+          <strong>18</strong>
+          <span>Code Repair</span>
+        </div>
+        <div class="stat">
+          <strong>25</strong>
+          <span>Ops Analysis</span>
+        </div>
+        <div class="stat">
+          <strong>18</strong>
+          <span>Combined Tasks</span>
+        </div>
+        <div class="stat">
+          <strong>2</strong>
+          <span>Built-in Providers</span>
+        </div>
+      </section>
+
+      <section id="leaderboard" class="section">
+        <div class="section-heading">
+          <h2>Leaderboard</h2>
+          <p>
+            Agent results measured with ACBench v0.1.0. Version 0.2.0 changed
+            how runs are scored (see the changelog), so these numbers are not
+            comparable with results from 0.2.0 or later.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Agent</th>
+                <th>Model</th>
+                <th>Code (%)</th>
+                <th>Ops (%)</th>
+                <th>Combined (%)</th>
+                <th>Avg (%)</th>
+                <th>Scenarios</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+        </div>
+        <p class="note">
+          ACBench reports build/test repair signals for code tasks and
+          detection/localization/repair rubric signals for ops tasks.
+        </p>
+      </section>
+
+      <section id="overview" class="section split">
+        <div>
+          <h2>Overview of ACBench</h2>
+          <p>
+            ACBench focuses on agentic cloud work where the solution is rarely
+            just a single code edit. Scenarios combine a fixed repository state,
+            bounded evidence, explicit success criteria, and reproducible
+            execution paths.
+          </p>
+          <p>
+            The benchmark includes small local fixtures for pipeline validation
+            and GitHub-derived OpenClaw reproductions for more realistic
+            failures. GitHub scenarios are localized into stable fixtures rather
+            than depending on a moving upstream branch.
+          </p>
+        </div>
+        <div class="overview-panel">
+          <div class="metric-row">
+            <span>Local Scenarios</span>
+            <strong>12</strong>
+          </div>
+          <div class="metric-row">
+            <span>GitHub-derived Scenarios</span>
+            <strong>49</strong>
+          </div>
+          <div class="metric-row">
+            <span>OpenClaw Fixture Families</span>
+            <strong>10</strong>
+          </div>
+          <div class="metric-row">
+            <span>Live Agent Implementations</span>
+            <strong>4</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="tasks" class="section">
+        <div class="section-heading">
+          <h2>Task Categories</h2>
+          <p>
+            ACBench separates evaluation into code, ops, and combined
+            capabilities while preserving a shared scenario schema.
+          </p>
+        </div>
+        <div class="category-grid">
+          <article class="category code">
+            <div class="category-icon">&lt;/&gt;</div>
+            <h3>Code Repair</h3>
+            <p>
+              Agents receive a buggy local repository, task context, and test
+              commands. They must generate a patch that fixes fail-to-pass tests
+              without breaking pass-to-pass behavior.
+            </p>
+            <dl>
+              <div><dt>Input</dt><dd>Buggy fixture repository and issue context</dd></div>
+              <div><dt>Output</dt><dd>Patch in diff format</dd></div>
+              <div><dt>Evaluation</dt><dd>Build, tests, and repair criteria</dd></div>
+            </dl>
+          </article>
+          <article class="category ops">
+            <div class="category-icon">âŒ?/div>
+            <h3>Ops Incident Analysis</h3>
+            <p>
+              Agents analyze incident evidence such as logs, symptoms,
+              reproduction steps, and service context. Responses are graded
+              against detection, localization, and remediation rubrics.
+            </p>
+            <dl>
+              <div><dt>Input</dt><dd>Incident description and visible evidence</dd></div>
+              <div><dt>Output</dt><dd>Structured diagnostic assessment</dd></div>
+              <div><dt>Evaluation</dt><dd>Rubric-based incident scoring</dd></div>
+            </dl>
+          </article>
+          <article class="category combined">
+            <div class="category-icon">â‡?/div>
+            <h3>Combined Workflows</h3>
+            <p>
+              Agents must first reason through operational symptoms, then apply
+              code-level fixes that resolve the underlying failure and validate
+              the repaired service.
+            </p>
+            <dl>
+              <div><dt>Input</dt><dd>Incident plus repository fixture</dd></div>
+              <div><dt>Output</dt><dd>Diagnosis and repair patch</dd></div>
+              <div><dt>Evaluation</dt><dd>Ops rubric plus code tests</dd></div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <section id="results" class="section">
+        <div class="section-heading">
+          <h2>Key Results</h2>
+          <p>
+            The project is ready to run local and GitHub-derived benchmark
+            suites through gold patches, OpenAI agents, Anthropic agents, or
+            custom agent profiles.
+          </p>
+        </div>
+        <div class="results-grid">
+          <article>
+            <h3>Reproducible Fixtures</h3>
+            <p>
+              Every scenario pins its source and execution path so evaluations
+              avoid branch drift and hidden remote-state changes.
+            </p>
+          </article>
+          <article>
+            <h3>Provider-neutral Agent Profiles</h3>
+            <p>
+              OpenAI and Anthropic integrations are built in, while custom
+              agents can be loaded through module references or JSON profiles.
+            </p>
+          </article>
+          <article>
+            <h3>Multi-signal Scoring</h3>
+            <p>
+              Code outcomes capture build and test transitions; ops outcomes
+              capture detection, localization, and repair-quality evidence.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section commands">
+        <h2>Run ACBench</h2>
+        <div class="command-grid">
+          <pre><code>acbench --doctor</code></pre>
+          <pre><code>acbench --scenario tasks/scenarios/local/code/billing_pricing__bundle_discount_threshold.scenario.json --validate-scenario</code></pre>
+          <pre><code>python scripts/run_agent_evals.py --agent-config configs/agents/claude_sonnet.example.json</code></pre>
+        </div>
+      </section>
+
+      <section id="citation" class="section citation">
+        <h2>Citation</h2>
+        <p>If you use ACBench in your research, cite the project as:</p>
+        <pre><code>@misc{acbench2026,
+  title  = {ACBench: Agentic Cloud Benchmark},
+  author = {ACBench Team},
+  year   = {2026},
+  note   = {Benchmark for code repair, ops analysis, and combined cloud agent tasks}
+}</code></pre>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>ACBench</span>
+      <span>Standalone benchmark for agentic cloud engineering.</span>
+    </footer>
+
+    <script src="main.js?v=d695ff5"></script>
+  </body>
+</html>

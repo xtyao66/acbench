@@ -1,0 +1,112 @@
+{
+ "scenario_id": "perf_compress_499",
+ "title": "huff0: static decompression buffer (up to ~30% faster)",
+ "mode": "combined",
+ "service": {
+  "application": "compress",
+  "service": "huff0",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_compress_499"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/klauspost/compress",
+  "base_commit": "fe93d93a2d9e544885e40c2bf4ec06f017add643",
+  "pr_url": "https://github.com/klauspost/compress/pull/499",
+  "license_note": "Real upstream klauspost/compress optimization PR #499; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up huff0 4X decompression by replacing the per-call stack [256]byte temp buffer with a reusable static [4][256]byte buffer on the Decoder and indexing it per-stream in the hot decode loops, without changing decoded output.",
+  "instructions": "Optimize the huff0 package for speed WITHOUT changing behavior. The benchmark BenchmarkDecompress4XNoTable measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./huff0"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "huff0/decompress_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "huff0",
+   "benchmark": "BenchmarkDecompress4XNoTable",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": true,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "compress-499",
+  "description": "huff0 4X decompress paths allocate a fresh [256]byte temp buffer per call and index it with offset arithmetic (bufoff*stream) instead of using a reusable static [4][256]byte buffer with direct per-stream indexing.",
+  "target_files": [
+   "huff0/decompress.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "compress-499",
+  "description": "huff0 Decompress4X / decompress4X8bit / decompress4X8bitExactly use a per-call stack [256]byte temp buffer and offset-based indexing in the inner decode loops, leaving speed on the table on the hot decompression path.",
+  "detection_keywords": [
+   "per-call temp buffer in huff0 decode loop",
+   "offset arithmetic indexing in hot loop",
+   "slow ns/op in huff0 4X decompression",
+   "decompress4X inner loop overhead"
+  ],
+  "localization_keywords": [
+   "huff0/decompress.go",
+   "Decompress4X",
+   "decompress4X8bit",
+   "var buf [256]byte temp table",
+   "bufoff*stream indexing"
+  ],
+  "repair_keywords": [
+   "static [4][256]byte buffer on Decoder",
+   "buf := &d.buf reusable buffer",
+   "buf[stream][off] direct per-stream indexing",
+   "const bufoff = 256",
+   "local pointer vars br1/br2 in decode loop"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "huff0 4X decompression is slower than it needs to be: each call allocates a stack temp buffer and uses offset arithmetic to index it within the tight per-stream decode loops.",
+  "error_logs": [],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkDecompress4XNoTable$' ./huff0"
+  ],
+  "relevant_files": [
+   "huff0/decompress.go"
+  ],
+  "notes": "Real upstream optimization PR; no fabricated profiling numbers."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "compress"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

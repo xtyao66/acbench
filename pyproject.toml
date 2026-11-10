@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "acbench"
+version = "0.2.0"
+description = "ACBench: a reproducible benchmark for evaluating AI agents on cloud code-repair, ops incident analysis, and combined workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "ACBench Team" },
+]
+keywords = [
+  "benchmark",
+  "ai-agents",
+  "llm",
+  "code-repair",
+  "aiops",
+  "evaluation",
+  "cloud-engineering",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = [
+  "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+anthropic = [
+  "anthropic>=0.39.0",
+]
+inspect = [
+  "inspect-ai>=0.3",
+]
+dev = [
+  "pytest>=8,<10",
+]
+
+[project.urls]
+Homepage = "https://github.com/xtyao66/acbench"
+Repository = "https://github.com/xtyao66/acbench"
+Documentation = "https://github.com/xtyao66/acbench/tree/main/docs"
+Issues = "https://github.com/xtyao66/acbench/issues"
+
+[project.scripts]
+acbench = "acbench.orchestrator.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools]
+packages = [
+  "acbench",
+  "acbench.agents",
+  "acbench.evaluation",
+  "acbench.executors",
+  "acbench.executors.backends",
+  "acbench.executors.backends.code",
+  "acbench.executors.backends.ops",
+  "acbench.models",
+  "acbench.orchestrator",
+  "acbench.services",
+  "acbench.tasks",
+]

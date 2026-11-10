@@ -1,0 +1,114 @@
+{
+  "scenario_id": "perf_sonic_789",
+  "title": "sonic: faster integer itoa",
+  "mode": "combined",
+  "service": {
+    "application": "sonic",
+    "service": "encoder-alg",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_sonic_789"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/bytedance/sonic",
+    "base_commit": "d89a3415a7c7c07102da8fb2705d6d11e54b0619",
+    "pr_url": "https://github.com/bytedance/sonic/pull/789",
+    "license_note": "Real upstream bytedance/sonic optimization PR #789; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up integer-to-ASCII conversion (I64toa/U64toa) in internal/encoder/alg so it stops paying the assembly-stub call overhead via the native/rt guard path, without changing the produced bytes.",
+    "instructions": "Optimize the internal/encoder/alg package for speed WITHOUT changing behavior. The benchmark BenchmarkI64toa measures it; existing tests must still pass. NOTE: this package uses build tags that require Go >= 1.20 and < 1.25.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./internal/encoder/alg"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "internal/encoder/alg/spec_test.go",
+      "internal/encoder/alg/sort_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "internal/encoder/alg",
+      "benchmark": "BenchmarkI64toa",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": false,
+      "gold_speedup": 1.168
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "sonic-789",
+    "description": "I64toa/U64toa route every conversion through rt.GuardSlice2 plus a native assembly stub (native.I64toa/native.U64toa) called via an unsafe pointer, adding call and bounds-guard overhead on the integer serialization path.",
+    "target_files": [
+      "internal/encoder/alg/spec.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "sonic-789",
+    "description": "Integer serialization in internal/encoder/alg goes through a guarded native assembly stub (rt.GuardSlice2 + native.I64toa/native.U64toa via unsafe pointer) instead of appending directly into the buffer, adding per-call overhead.",
+    "detection_keywords": [
+      "native assembly stub call overhead",
+      "rt.GuardSlice2 bounds-guard per call",
+      "unsafe pointer indirection in itoa",
+      "slow integer serialization path",
+      "I64toa/U64toa hot path"
+    ],
+    "localization_keywords": [
+      "spec.go",
+      "I64toa function",
+      "U64toa function",
+      "native.I64toa stub",
+      "rt.GuardSlice2 guard"
+    ],
+    "repair_keywords": [
+      "strconv.AppendInt for I64toa",
+      "strconv.AppendUint for U64toa",
+      "append directly into buf",
+      "drop native stub call",
+      "remove GuardSlice2 indirection"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Converting integers to their ASCII form during JSON encoding (I64toa/U64toa in internal/encoder/alg) routes each call through a guarded native assembly stub, which shows up as call and bounds-guard overhead on the encode path.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^BenchmarkI64toa$' ./internal/encoder/alg"
+    ],
+    "relevant_files": [
+      "internal/encoder/alg/spec.go"
+    ],
+    "notes": "Real upstream optimization PR #789. Build tags require Go >= 1.20 and < 1.25."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "sonic"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

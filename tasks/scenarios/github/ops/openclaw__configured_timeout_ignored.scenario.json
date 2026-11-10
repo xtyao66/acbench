@@ -1,0 +1,113 @@
+{
+  "scenario_id": "github_ops_openclaw_configured_timeout_ignored",
+  "title": "OpenClaw provider transport should honor configured long request timeouts",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "provider-request-timeout",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.3.12",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/46049",
+    "snapshot_key": "openclaw-46049-synthetic-ops-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #46049."
+  },
+  "task": {
+    "summary": "Triage why configured long request timeouts are ignored and requests still fail early.",
+    "instructions": "Use the incident evidence to confirm that the configured timeout values are being ignored, localize the problem to the provider transport timeout path, and propose an ops-level repair plan that restores the expected request lifetime.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "Even with timeout settings raised to 86400 seconds, provider requests still fail early with `LLM request timed out`.",
+    "error_logs": [
+      "embedded run agent end: provider=custom-127-0-0-1-5001 error=LLM request timed out",
+      "embedded run failover decision: decision=surface_error reason=timeout"
+    ],
+    "reproduction_steps": [
+      "Inspect the timeout evidence and compare configured values to the observed early failure.",
+      "Explain where the timeout must be threaded so long-running providers can complete."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models timeout-policy diagnosis around a slower local provider."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-46049-configured-timeout-ignored",
+    "description": "Synthetic timeout incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "timeout",
+      "LLM request timed out",
+      "86400"
+    ],
+    "localization_keywords": [
+      "provider transport",
+      "http timeout",
+      "internal timeout",
+      "request timeout"
+    ],
+    "repair_keywords": [
+      "respect configured timeout",
+      "thread timeoutSeconds",
+      "transport layer",
+      "remove hardcoded timeout",
+      "provider request timeout"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "timeouts",
+      "provider-transport"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #46049."
+}

@@ -1,0 +1,147 @@
+{
+  "scenario_id": "github_combined_openclaw_pairing_state_array_approval",
+  "title": "OpenClaw pairing approval should recover from array-typed state files",
+  "mode": "combined",
+  "service": {
+    "application": "openclaw",
+    "service": "device-pairing",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_pairing_state_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.8",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/63035",
+    "snapshot_key": "openclaw-63035-localized-fixture-v2",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #63035."
+  },
+  "task": {
+    "summary": "Triage a repeated pairing-required incident and repair the pairing-state loader.",
+    "instructions": "Use the incident clues to localize why approvals never stick when the state files drift into array form, repair the state-loading path, and preserve the healthy object-backed behavior.",
+    "acceptance_notes": "Both ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Docker-based pairing can get stuck forever with `pairing required` because pending.json and paired.json have drifted into `[]` instead of `{}`.",
+    "error_logs": [
+      "[PAIR-APPROVE-RESULT] approved=null request_id=req-001",
+      "[ws] closed before connect code=1008 reason=pairing required"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_pairing_state/pairing_state.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_pairing_state/pairing_state.py",
+      "tests/test_pairing_state.py"
+    ],
+    "notes": "This fixture models the pairing-state recovery path behind the approval incident."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-63035-pairing-state-array-approval",
+    "description": "Synthetic pairing incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "pairing required",
+      "approved=null",
+      "pending.json"
+    ],
+    "localization_keywords": [
+      "pending.json",
+      "paired.json",
+      "pairing_state.py",
+      "array",
+      "state loading"
+    ],
+    "repair_keywords": [
+      "coerce array state",
+      "treat [] as {}",
+      "state loader",
+      "approval path"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-63035-array-pairing-state",
+    "description": "Array-typed state is not coerced back to mappings before approval logic runs.",
+    "target_files": [
+      "src/openclaw_pairing_state/pairing_state.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_pairing_state.ArrayBackedStateTests::test_array_typed_state_is_coerced_before_approval"
+    ],
+    "pass_to_pass": [
+      "test_pairing_state.ArrayBackedStateTests::test_object_backed_state_still_round_trips",
+      "test_pairing_state.ArrayBackedStateTests::test_missing_state_files_default_to_empty_mappings"
+    ],
+    "required_tests": [
+      "test_pairing_state.ArrayBackedStateTests::test_array_typed_state_is_coerced_before_approval",
+      "test_pairing_state.ArrayBackedStateTests::test_object_backed_state_still_round_trips",
+      "test_pairing_state.ArrayBackedStateTests::test_missing_state_files_default_to_empty_mappings"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This GitHub-derived reproduction expects incident localization and a code repair."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "device-pairing",
+      "state-management"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "combined"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #63035.",
+  "gold_patch_path": "patches/github/openclaw_pairing_state_array_fix.diff"
+}

@@ -1,0 +1,99 @@
+{
+  "scenario_id": "perf_prometheus_18699",
+  "title": "Querier select over out-of-order chunks is slow: a per-iteration closure recomputes the oversize-chunk size check on every sample in the hot populateChunksFromIterable loop",
+  "mode": "combined",
+  "service": {
+    "application": "prometheus",
+    "service": "tsdb",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_prometheus_18699"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/prometheus/prometheus",
+    "base_commit": "49cf97be7e7d6c63fd14dd60f2f52f776385ca49",
+    "pr_url": "https://github.com/prometheus/prometheus/pull/18699",
+    "license_note": "Real upstream prometheus optimization PR #18699; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up populateChunksFromIterable in tsdb/querier.go: avoid the per-sample overSizeChunk closure and only compute the chunk-size check when a new chunk is not already being cut.",
+    "instructions": "Optimize the tsdb package for speed WITHOUT changing behavior. The benchmark BenchmarkQuerierSelectWithOutOfOrder measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": ["go test -count=1 ./tsdb"],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": ["tsdb/querier_bench_test.go"],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "tsdb",
+      "benchmark": "BenchmarkQuerierSelectWithOutOfOrder",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": true,
+      "gold_speedup": null
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "prometheus-18699",
+    "description": "populateChunksFromIterable allocates and invokes an overSizeChunk closure on every loop iteration and always recomputes len(currentChunk.Bytes()) even when a new chunk is cut for another reason.",
+    "target_files": ["tsdb/querier.go"]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "prometheus-18699",
+    "description": "CPU profile of out-of-order querier selects shows time concentrated in populateChunksFromIterable doing redundant per-sample size checks.",
+    "detection_keywords": [
+      "high CPU in hot loop",
+      "slow ns/op",
+      "redundant per-sample computation",
+      "closure call overhead in hot path",
+      "querier select latency"
+    ],
+    "localization_keywords": [
+      "querier.go",
+      "populateChunksFromIterable",
+      "overSizeChunk closure",
+      "len(currentChunk.Bytes())",
+      "populateWithDelChunkSeriesIterator"
+    ],
+    "repair_keywords": [
+      "inline the oversize-chunk size check",
+      "compute cutNewChunk boolean first",
+      "short-circuit size check when cutNewChunk already true",
+      "remove per-iteration closure allocation",
+      "call len(currentChunk.Bytes()) at most once per iteration"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Selecting series that contain out-of-order samples is slower than expected; CPU profiles point at the chunk-population loop in the TSDB querier, which appears to do redundant size bookkeeping for every sample.",
+    "error_logs": ["pprof: 38.4% cum tsdb.(*populateWithDelChunkSeriesIterator).populateChunksFromIterable (querier.go); hot in len(currentChunk.Bytes()) / overSizeChunk closure"],
+    "reproduction_steps": ["go test -run='^$' -bench='^BenchmarkQuerierSelectWithOutOfOrder$' ./tsdb"],
+    "relevant_files": ["tsdb/querier.go"],
+    "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": ["perf", "real-pr", "prometheus"],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "scenario_id": "combined_billing_pricing_checkout_totals",
+  "title": "Checkout totals incident with pricing repair",
+  "mode": "combined",
+  "service": {
+    "application": "billing-pricing",
+    "service": "checkout-pricing",
+    "deployment": "local",
+    "repository_path": "services/fixtures/billing_pricing_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "billing-pricing-checkout-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a checkout totals incident and repair the underlying pricing bug.",
+    "instructions": "Use the incident clues to localize the pricing defect, apply a repair, and restore all checkout pricing tests.",
+    "acceptance_notes": "Both the ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "The checkout team opened an incident after seeing overpriced bundles in production carts that should have received a promotion.",
+    "error_logs": [
+      "alerts/checkout_totals.log: pricing drift detected for bundle-capable starter kits",
+      "support: three-unit carts receive higher totals than the pricing playbook expects"
+    ],
+    "reproduction_steps": [
+      "Inspect the pricing fixture and run the unit tests.",
+      "Use the alert clues to localize the issue before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/billing_pricing/pricing.py",
+      "tests/test_pricing.py"
+    ],
+    "notes": "The incident refers to a pricing regression introduced near a promotion boundary."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-checkout-totals-incident-001",
+    "description": "Synthetic checkout totals incident tied to the billing_pricing fixture.",
+    "detection_keywords": [
+      "overpriced",
+      "pricing drift",
+      "bundle"
+    ],
+    "localization_keywords": [
+      "pricing",
+      "threshold",
+      "checkout-pricing"
+    ],
+    "repair_keywords": [
+      "bundle discount",
+      "threshold",
+      "pricing logic",
+      "promotion logic",
+      "promotion eligibility",
+      "apply discounts",
+      "promotion boundary",
+      "boundary checks",
+      "pricing.py",
+      "discount application"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "billing-pricing-bundle-threshold-001",
+    "description": "The bundle discount threshold is evaluated incorrectly for one boundary case.",
+    "target_files": [
+      "src/billing_pricing/pricing.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_pricing.PricingTests::test_exactly_three_eligible_units_trigger_bundle_discount"
+    ],
+    "pass_to_pass": [
+      "test_pricing.PricingTests::test_gift_cards_do_not_count_toward_bundle_threshold",
+      "test_pricing.PricingTests::test_two_distinct_items_get_small_bundle_discount"
+    ],
+    "required_tests": [
+      "test_pricing.PricingTests::test_exactly_three_eligible_units_trigger_bundle_discount",
+      "test_pricing.PricingTests::test_gift_cards_do_not_count_toward_bundle_threshold",
+      "test_pricing.PricingTests::test_two_distinct_items_get_small_bundle_discount"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a pricing fix."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "pricing",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "pricing"
+  ],
+  "notes": "Combined pricing incident and repair task.",
+  "gold_patch_path": "patches/billing_pricing_bundle_fix.diff"
+}

@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use ACBench, please cite the work below."
+title: "ACBench: Auditing Feedback Scaffolds in LLM Performance Engineering"
+abstract: >-
+  ACBench is a benchmark and analysis suite for auditing retry and profiling
+  feedback scaffolds in live-measured LLM performance-engineering loops over
+  retained real-PR Go optimization scenarios.
+type: software
+authors:
+  - name: "ACBench Team"
+version: "0.2.0"
+date-released: "2026-11-05"
+license: Apache-2.0
+url: "https://github.com/xtyao66/acbench"
+repository-code: "https://github.com/xtyao66/acbench"
+keywords:
+  - benchmark
+  - performance-engineering
+  - llm
+  - profiling-feedback
+  - execution-feedback
+  - evaluation
+preferred-citation:
+  type: conference-paper
+  title: "ACBench: Auditing Feedback Scaffolds in LLM Performance Engineering"
+  authors:
+    - name: "ACBench Team"
+  year: 2026
+  url: "https://github.com/xtyao66/acbench"

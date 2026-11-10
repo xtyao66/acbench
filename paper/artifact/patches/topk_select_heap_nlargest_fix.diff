@@ -1,0 +1,31 @@
+diff --git a/src/topk_select/handler.py b/src/topk_select/handler.py
+index 1111111..2222222 100644
+--- a/src/topk_select/handler.py
++++ b/src/topk_select/handler.py
+@@ -8,6 +8,8 @@ contains exactly ``min(k, len(candidates))`` candidates, ordered best first.
+
+ from __future__ import annotations
+
++import heapq
++
+ from topk_select.ranking import Candidate, RankKey, reset_comparison_count
+
+
+@@ -28,12 +30,10 @@ def select_top_k(
+
+     keys = [RankKey(candidate) for candidate in candidates]
+
+-    # Fully sort the entire candidate pool, then keep only the first ``k``.
+-    # Sorting N candidates costs O(N log N) comparisons even though only the top
+-    # ``k`` are needed; for k << N this throws away almost all of the work. Each
+-    # comparison is a real ``RankKey.__lt__`` call, so the wasted comparisons are
+-    # wasted CPU time, not just wasted asymptotics.
+-    ordered = sorted(keys, reverse=True)
+-    top = ordered[:k]
++    # Select only the top ``k`` keys with a bounded heap. ``heapq.nlargest``
++    # keeps a heap of size ``k`` while scanning the pool once, costing
++    # O(N log k) comparisons instead of the O(N log N) of a full sort, and
++    # returns them already ordered best first.
++    top = heapq.nlargest(k, keys)
+
+     return [key.candidate for key in top]

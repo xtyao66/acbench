@@ -1,0 +1,113 @@
+{
+ "scenario_id": "perf_prometheus_13782",
+ "title": "Improve Labels.Compare() performance with stringlabels",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "labels",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_prometheus_13782"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "a0e93e403e9a58fd5855964c8bff5f40a026d244",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/13782",
+  "license_note": "Real upstream prometheus optimization PR #13782; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up Compare() in the stringlabels-tagged labels implementation by streamlining the back-scan loop that locates which label entry holds the first differing byte, without changing comparison results.",
+  "instructions": "Optimize the model/labels package (stringlabels build tag) for speed WITHOUT changing behavior. The benchmark BenchmarkLabels_Compare measures it; existing tests must still pass. Build and test with -tags stringlabels.",
+  "acceptance_notes": "Behavior preserved (go test -tags stringlabels passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 -tags stringlabels ./model/labels"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "model/labels/labels_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "model/labels",
+   "benchmark": "BenchmarkLabels_Compare",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": true,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-13782",
+  "description": "Compare() in labels_stringlabels.go re-scans label entries with a loop that re-runs decodeSize from index 0 each iteration and breaks via an inner conditional, adding overhead on the hot label-comparison path.",
+  "target_files": [
+   "model/labels/labels_stringlabels.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-13782",
+  "description": "Label-set comparison in the stringlabels build shows time spent in Compare()'s back-scan loop in model/labels/labels_stringlabels.go, which decodes entry sizes to find which label holds the first differing byte.",
+  "detection_keywords": [
+   "slow ns/op comparing label sets",
+   "Compare hot path overhead",
+   "stringlabels comparison cost",
+   "redundant decodeSize work in loop",
+   "back-scan loop in Labels.Compare"
+  ],
+  "localization_keywords": [
+   "labels_stringlabels.go",
+   "Compare function",
+   "decodeSize back-scan loop",
+   "firstCharDifferent",
+   "find entry holding first differing byte"
+  ],
+  "repair_keywords": [
+   "hoist decodeSize out of loop condition",
+   "advance size/nextI inside loop body",
+   "convert break-conditional loop to for-condition",
+   "avoid re-decoding from index 0",
+   "streamline entry back-scan"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Comparing two Labels sets via Compare() in the stringlabels implementation is slower than necessary because the loop that locates the differing label entry re-decodes sizes with an awkward break structure.",
+  "error_logs": [],
+  "reproduction_steps": [
+   "go test -tags stringlabels -run='^$' -bench='^BenchmarkLabels_Compare$' ./model/labels"
+  ],
+  "relevant_files": [
+   "model/labels/labels_stringlabels.go"
+  ],
+  "notes": "Real upstream optimization PR #13782; loop in Compare() restructured to avoid redundant decoding."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

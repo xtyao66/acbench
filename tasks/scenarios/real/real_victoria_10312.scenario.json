@@ -1,0 +1,115 @@
+{
+ "scenario_id": "real_victoria_10312",
+ "title": "SearchTenants returns tenants from outside the requested date, so per-date tenant queries report tenants that have no...",
+ "mode": "combined",
+ "service": {
+  "application": "victoria",
+  "service": "storage",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_victoria_10312"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/VictoriaMetrics/VictoriaMetrics",
+  "base_commit": "8c8794682482",
+  "pr_url": "https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10312",
+  "license_note": "Real upstream victoria PR #10312; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "SearchTenants returns tenants from outside the requested date, so per-date tenant queries report tenants that have no data on that date.",
+  "instructions": "Fix the defect in the storage package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestStorageSearchTenantsOnDate$' ./lib/storage"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "storage.TestStorageSearchTenantsOnDate"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "storage.TestStorageSearchTenantsOnDate"
+  ],
+  "forbidden_paths": [
+   "lib/storage/storage_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "victoria-10312",
+  "description": "searchTenantsOnDate discards the index entry tail and adds every tenant regardless of date, instead of comparing the entry's date against the requested date.",
+  "target_files": [
+   "lib/storage/index_db.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "victoria-10312",
+  "description": "Per-date tenant listings include tenants that have no samples on the requested date, returning incorrect SearchTenants results for narrow time ranges.",
+  "detection_keywords": [
+   "wrong results",
+   "incorrect tenant list",
+   "extra tenants returned",
+   "tenants leak across dates",
+   "SearchTenants returns wrong tenants for a time range"
+  ],
+  "localization_keywords": [
+   "index_db.go",
+   "searchTenantsOnDate function",
+   "tail returned by unmarshalCommonPrefix is discarded",
+   "date from index entry tail is never compared",
+   "tenant added unconditionally for every matching prefix",
+   "missing keyDate vs requested date check",
+   "per-date tenant index entry"
+  ],
+  "repair_keywords": [
+   "capture the tail from unmarshalCommonPrefix",
+   "unmarshal keyDate from tail with encoding.UnmarshalUint64",
+   "only add tenant when date == 0 or keyDate == date",
+   "filter tenants by the entry date"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Listing tenants for a specific day returns tenants that have no data on that day; narrowing the query time range does not narrow the tenant list as expected.",
+  "error_logs": [
+   "SearchTenants(tr) returned tenants outside the requested date range",
+   "unexpected tenants for time range; got more tenants than have samples on that date",
+   "per-date tenant query includes tenants whose data is on other dates"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestStorageSearchTenantsOnDate$' ./lib/storage"
+  ],
+  "relevant_files": [
+   "lib/storage/index_db.go",
+   "lib/storage/storage_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "victoria"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

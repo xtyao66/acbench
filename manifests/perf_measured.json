@@ -1,0 +1,39 @@
+{
+  "name": "perf_measured",
+  "description": "Measured-performance scenarios graded on real wall-clock speedup (correctness-gated) on the run hardware.",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/local/combined/dedupe_filter__ingestion_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/early_filter__ranking_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/feature_normalize__scoring_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/group_metrics__rollup_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/parse_once_cache__config_parse_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/regex_hoist_redactor__compile_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/report_render__serialize_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/score_recompute__risk_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/settlement_rollup__aggregate_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/sorted_lookup_bisect__routing_latency_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/topk_select__candidate_cpu_incident.scenario.json"
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "scenario_id": "github_combined_openclaw_listener_cron_run",
+  "title": "OpenClaw cron-triggered late listener output should not crash the gateway",
+  "mode": "combined",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_listener_runtime_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62876",
+    "snapshot_key": "openclaw-62876-localized-fixture-v2",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #62876."
+  },
+  "task": {
+    "summary": "Triage a cron-run crash caused by late listener output and repair the listener guard.",
+    "instructions": "Use the incident clues to localize why cron-driven late updates reach the listener after the active run is gone, repair the guard so those events are dropped safely, and preserve healthy in-run event handling.",
+    "acceptance_notes": "Both ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Running `openclaw cron run <job-id>` can hang and then crash the gateway with `Agent listener invoked outside active run` when late updates arrive.",
+    "error_logs": [
+      "openclaw cron run triggers Unhandled promise rejection",
+      "late stderr/update reached Agent.processEvents after the run ended"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_listener_runtime/agent_loop.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_listener_runtime/agent_loop.py",
+      "tests/test_agent_loop.py"
+    ],
+    "notes": "This fixture reuses the localized late-listener guard bug with cron-style incident framing."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62876-cron-run-listener-guard",
+    "description": "Synthetic listener incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "cron run",
+      "outside active run",
+      "gateway crash"
+    ],
+    "localization_keywords": [
+      "agent_loop.py",
+      "late listener",
+      "active run",
+      "cron output"
+    ],
+    "repair_keywords": [
+      "skip late events",
+      "return instead of throw",
+      "cron-triggered output",
+      "safe guard"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-62876-cron-run-listener-guard",
+    "description": "Late cron-triggered listener updates are raised instead of skipped after the active run ends.",
+    "target_files": [
+      "src/openclaw_listener_runtime/agent_loop.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_outside_active_run_are_skipped"
+    ],
+    "pass_to_pass": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_during_active_run_are_processed",
+      "test_agent_loop.AgentRuntimeTests::test_finishing_a_run_clears_the_active_run"
+    ],
+    "required_tests": [
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_outside_active_run_are_skipped",
+      "test_agent_loop.AgentRuntimeTests::test_listener_events_during_active_run_are_processed",
+      "test_agent_loop.AgentRuntimeTests::test_finishing_a_run_clears_the_active_run"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This GitHub-derived reproduction expects incident localization and a code repair."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "cron",
+      "listener-runtime"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "combined"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #62876.",
+  "gold_patch_path": "patches/github/openclaw_listener_outside_active_run_fix.diff"
+}

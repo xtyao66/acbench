@@ -1,0 +1,23 @@
+diff --git a/src/quote_pricing/engine.py b/src/quote_pricing/engine.py
+index 1c89968..8cad4e7 100644
+--- a/src/quote_pricing/engine.py
++++ b/src/quote_pricing/engine.py
+@@ -24,12 +24,14 @@ def price_quote(
+     """
+ 
+     priced: list[dict[str, object]] = []
++    # Memoize the pure surcharge model per zone: compute each distinct zone once
++    # and reuse the cached result for every line that repeats it.
++    surcharge_by_zone: dict[object, int] = {}
+     for item in line_items:
+         zone = item["zone"]
+-        # The expensive, *pure* surcharge model is recomputed for every line,
+-        # even when many lines repeat the same zone: N computations for a batch
+-        # of N lines.
+-        surcharge = rates.compute(zone)
++        if zone not in surcharge_by_zone:
++            surcharge_by_zone[zone] = rates.compute(zone)
++        surcharge = surcharge_by_zone[zone]
+         amount = int(item["amount"])
+         priced.append(
+             {

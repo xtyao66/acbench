@@ -1,0 +1,19 @@
+--- a/src/openclaw_no_reply/tokens.py
++++ b/src/openclaw_no_reply/tokens.py
+@@ -5,13 +5,13 @@
+ import re
+ 
+ 
+ _EXACT_SILENT_REPLY = re.compile(r"^\s*NO_REPLY\s*$", re.IGNORECASE)
+ 
+ 
+ def is_silent_reply_text(text: str) -> bool:
+     """Return whether the text should be treated as a silent reply."""
+ 
+-    stripped = text.strip()
+-    if not stripped:
++    normalized = text.lstrip()
++    if not normalized:
+         return False
+-    return bool(_EXACT_SILENT_REPLY.match(stripped))
++    return bool(_EXACT_SILENT_REPLY.match(normalized)) or normalized.upper().startswith("NO_REPLY")

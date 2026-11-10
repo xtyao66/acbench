@@ -1,0 +1,20 @@
+--- a/src/openclaw_pairing_state/pairing_state.py
++++ b/src/openclaw_pairing_state/pairing_state.py
+@@ -21,10 +21,16 @@ def load_state(base_dir: str | Path) -> dict[str, Any]:
+     """Load pending and paired device state from disk."""
+ 
+     pending = _read_json(_state_path(base_dir, "pending.json"))
+     paired = _read_json(_state_path(base_dir, "paired.json"))
++    if not isinstance(pending, dict):
++        pending = {}
++    if not isinstance(paired, dict):
++        paired = {}
+     return {
+-        "pending_by_id": pending if pending is not None else {},
+-        "paired_by_device_id": paired if paired is not None else {},
++        "pending_by_id": pending,
++        "paired_by_device_id": paired,
+     }
+ 
+ 
+ def persist_state(base_dir: str | Path, state: dict[str, Any]) -> None:

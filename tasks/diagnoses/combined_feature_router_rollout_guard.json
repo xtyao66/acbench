@@ -1,0 +1,37 @@
+{
+  "scenario_id": "combined_feature_router_rollout_guard",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "During a full-rollout simulation, accounts that are on the block list were still assigned the new variant, so the guardrail meant to keep blocked users out failed.",
+    "root_cause": "In the feature router module (the routing decision routine), the order in which the decision is made puts the rollout-percentage assignment ahead of the block-list check. Because the routine reaches a positive new-variant decision based on the rollout percentage before it ever consults block-list membership, a user who is on the block list can slip through and be placed into the new variant. The guardrail is evaluated too late in the decision flow rather than acting as an early veto.",
+    "remediation": "Reorder the decision logic so block-list membership is checked first and returns an immediate denial before any rollout-percentage assignment can occur, ensuring the guardrail takes precedence over the rollout decision while leaving the allow-list path unaffected.",
+    "evidence": [
+      "incident: blocked-user observed in new variant during 100% rollout simulation",
+      "rollout-guard trace: denylist membership did not stop the new-variant decision path"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "During a full-rollout simulation, accounts that are on the block list were still assigned the new variant, so the guardrail meant to keep blocked users out failed.",
+    "root_cause": "The block-list lookup itself is unreliable: the router compares the incoming account identifier against the stored block-list entries using a mismatched normalization, so entries that should match are treated as non-members. Because the membership test silently returns a miss for users who are in fact blocked, those users fall through to the normal rollout path. The defect is in how identifiers are compared and normalized for the guardrail set, not in the ordering of the checks.",
+    "remediation": "Normalize both the incoming identifier and the stored block-list entries consistently (for example trimming and case-folding) before comparison, and add membership tests to confirm known-blocked identifiers are correctly recognized.",
+    "evidence": [
+      "incident: blocked-user observed in new variant during 100% rollout simulation",
+      "rollout-guard trace: denylist membership did not stop the new-variant decision path"
+    ]
+  },
+  "wrong_rationale": "It is plausible because a membership test that quietly misses a blocked user would produce exactly the observed symptom, and identifier normalization bugs are a common real-world cause; it misleads by sending the engineer to fix the lookup/comparison logic when the membership test is actually correct and the true defect is the ordering of the guardrail relative to the rollout-percentage decision."
+}

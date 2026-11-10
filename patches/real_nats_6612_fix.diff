@@ -1,0 +1,22 @@
+diff --git a/server/subject_transform.go b/server/subject_transform.go
+index 41e42722d1d..42cc17e0672 100644
+--- a/server/subject_transform.go
++++ b/server/subject_transform.go
+@@ -459,7 +459,16 @@ func (tr *subjectTransform) TransformTokenizedSubject(tokens []string) string {
+ 				}
+ 				b.WriteString(tr.getHashPartition(keyForHashing, int(tr.dtokmfintargs[i])))
+ 			case Wildcard: // simple substitution
+-				b.WriteString(tokens[tr.dtokmftokindexesargs[i][0]])
++				switch {
++				case len(tr.dtokmftokindexesargs) < i:
++					break
++				case len(tr.dtokmftokindexesargs[i]) < 1:
++					break
++				case len(tokens) <= tr.dtokmftokindexesargs[i][0]:
++					break
++				default:
++					b.WriteString(tokens[tr.dtokmftokindexesargs[i][0]])
++				}
+ 			case SplitFromLeft:
+ 				sourceToken := tokens[tr.dtokmftokindexesargs[i][0]]
+ 				sourceTokenLen := len(sourceToken)

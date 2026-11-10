@@ -1,0 +1,17 @@
+{
+  "name": "perf_g1",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_13673.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17067.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17439.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_6432.scenario.json"
+    }
+  ]
+}

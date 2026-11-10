@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_slow_failover_degradation",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When the main session lane hits repeated transport-level connection errors, it keeps retrying for more than twenty seconds before finally falling back, so users see prolonged connection-error spam during the degradation window.",
+    "root_cause": "In the failover policy runtime module, the decision logic that counts consecutive transport failures and decides when to abandon the primary lane permits one extra failed transport attempt before switching to the fallback path. Because the comparison that gauges accumulated failures against the allowed limit tolerates one more failure than it should, the lane stays on the unhealthy primary route through an additional slow retry cycle, stretching the time-to-fallback past twenty seconds while non-transport errors and normal retry behavior remain unaffected.",
+    "remediation": "Tighten the failover trigger so the lane switches to the fallback route after the intended number of consecutive transport failures rather than one beyond it, correcting the threshold comparison so degradation ends sooner while leaving healthy retries and non-transport handling intact.",
+    "evidence": [
+      "lane task error reporting the main lane failed after roughly twenty-three and a half seconds with a failover error",
+      "failover decision log showing fallback chosen by timeout only after about twenty-three seconds",
+      "issue text describing repeated transport errors spamming connection errors for more than twenty seconds before fallback succeeds"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When the main session lane hits repeated transport-level connection errors, it keeps retrying for more than twenty seconds before finally falling back, so users see prolonged connection-error spam during the degradation window.",
+    "root_cause": "The retry scheduling layer applies an exponential backoff with delays that grow too aggressively between successive transport-error retries. Each failed attempt waits progressively longer before the next try, so even a correct number of retries accumulates into more than twenty seconds of wall-clock time before the policy is allowed to evaluate fallback. The long observed duration is a symptom of the inter-attempt wait schedule, not of how many failures are counted, meaning the lane reaches its fallback eventually but only after the cumulative backoff delays have elapsed.",
+    "remediation": "Reduce the backoff growth factor or cap the maximum inter-attempt delay so the sequence of transport-error retries completes quickly, bringing total elapsed time under the degradation budget while keeping the retry count unchanged.",
+    "evidence": [
+      "lane task error reporting the main lane failed after roughly twenty-three and a half seconds with a failover error",
+      "failover decision log indicating fallback was reached only after about twenty-three seconds elapsed",
+      "issue text describing more than twenty seconds of connection-error spam before fallback succeeds"
+    ]
+  },
+  "wrong_rationale": "The long ~23s duration genuinely looks like slow timing, so blaming an over-aggressive backoff delay schedule is plausible and an engineer would naturally tune backoff parameters; but the true defect is a count-based threshold permitting one transport failure too many, so adjusting delays would not change how many failures occur before fallback and the degradation window would persist."
+}

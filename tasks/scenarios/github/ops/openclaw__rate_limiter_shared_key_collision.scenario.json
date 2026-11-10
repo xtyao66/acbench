@@ -1,0 +1,106 @@
+{
+  "scenario_id": "github_ops_openclaw_rate_limiter_shared_key_collision",
+  "title": "OpenClaw rate limiter uses shared Redis key across tenants causing cross-tenant throttling",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "rate-limiter",
+    "deployment": "docker"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "",
+    "snapshot_key": "openclaw-synthetic-ops-smoke-v1",
+    "license_note": "Synthetic OpenClaw-style ops scenario authored for ACBench."
+  },
+  "task": {
+    "summary": "Diagnose why low-volume tenants are hitting rate limits that should only apply to high-volume tenants.",
+    "instructions": "Use the incident evidence to confirm the rate limit key is shared across tenants, localize the fault to the key construction logic missing a tenant identifier, and submit a repair conclusion through the ops workflow.",
+    "acceptance_notes": "This is an ops-only synthetic incident authored in the style of GitHub-derived OpenClaw incidents."
+  },
+  "visible_context": {
+    "issue_text": "Tenant B (low volume) begins receiving 429 Too Many Requests errors during peak usage by Tenant A. Both tenants share a plan tier but should have independent rate limit buckets.",
+    "error_logs": [
+      "rate-limiter: key=rl:plan:pro:endpoint:/v1/chat — counter=1001/1000",
+      "tenant-B: 429 Too Many Requests on /v1/chat",
+      "redis: INCR rl:plan:pro:endpoint:/v1/chat => 1001",
+      "rate-limiter: key construction omits tenant_id"
+    ],
+    "reproduction_steps": [
+      "Inspect the rate limiter key format and confirm tenant_id is absent.",
+      "Confirm the Redis counter is shared across all tenants on the same plan.",
+      "Decide whether the fault has been detected, localized, and repaired."
+    ],
+    "relevant_files": [],
+    "notes": "The expected repair scopes the rate limit key to include tenant_id (e.g. rl:tenant:{id}:plan:pro:endpoint:/v1/chat)."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-synthetic-rate-limiter-key-collision",
+    "description": "Synthetic incident where a missing tenant_id in the rate limiter key causes cross-tenant throttling.",
+    "detection_keywords": [
+      "429",
+      "Too Many Requests",
+      "rate limit"
+    ],
+    "localization_keywords": [
+      "shared key",
+      "tenant_id",
+      "key construction"
+    ],
+    "repair_keywords": [
+      "tenant_id",
+      "scope key",
+      "per-tenant"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": true
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Ops-only smoke scenario. The standalone executor remains synthetic."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "rate-limiting",
+      "multi-tenancy",
+      "redis"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": ["TTD", "TTL", "TTM"],
+  "tags": ["github", "openclaw", "ops"],
+  "notes": "Synthetic OpenClaw-style ops scenario authored for ACBench."
+}

@@ -1,0 +1,115 @@
+{
+ "scenario_id": "real_prometheus_18056",
+ "title": "When translating OTLP histogram metrics with multiple data points, an exemplar attached to one data point leaks into ...",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "prometheusremotewrite",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_prometheus_18056"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "2f1a797d1af2",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/18056",
+  "license_note": "Real upstream prometheus PR #18056; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "When translating OTLP histogram metrics with multiple data points, an exemplar attached to one data point leaks into the _sum and _count series of the following data points.",
+  "instructions": "Fix the defect in the prometheusremotewrite package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestAddHistogramDataPoints_ExemplarLeakAcrossDataPoints$' ./storage/remote/otlptranslator/prometheusremotewrite"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "prometheusremotewrite.TestAddHistogramDataPoints_ExemplarLeakAcrossDataPoints"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "prometheusremotewrite.TestAddHistogramDataPoints_ExemplarLeakAcrossDataPoints"
+  ],
+  "forbidden_paths": [
+   "storage/remote/otlptranslator/prometheusremotewrite/helper_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-18056",
+  "description": "In addHistogramDataPoints the shared appOpts.Exemplars slice is not reset between data points, so exemplars from one histogram data point leak into the _sum and _count samples of subsequent data points.",
+  "target_files": [
+   "storage/remote/otlptranslator/prometheusremotewrite/helper.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-18056",
+  "description": "OTLP histogram remote-write translation emits wrong exemplars: stale exemplars from a previous data point appear on the _sum and _count series of later data points.",
+  "detection_keywords": [
+   "wrong exemplars on samples",
+   "exemplars appear on _sum and _count series",
+   "stale exemplar from previous data point",
+   "duplicate exemplar across histogram data points",
+   "incorrect remote-write output for OTLP histograms"
+  ],
+  "localization_keywords": [
+   "helper.go",
+   "addHistogramDataPoints data point loop",
+   "shared appOpts.Exemplars slice reused across data points",
+   "exemplars from previous data point not cleared",
+   "appOpts.Exemplars carries over into _sum and _count",
+   "PrometheusConverter OTLP histogram translation",
+   "exemplar leak across data points"
+  ],
+  "repair_keywords": [
+   "reset appOpts.Exemplars to nil per data point",
+   "clear stale exemplars at start of each loop iteration",
+   "prevent exemplar leak into _sum and _count",
+   "scope exemplars to a single data point"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "When an OTLP histogram has several data points, an exemplar on one data point unexpectedly shows up on the _sum and _count series of the next data points after remote-write translation.",
+  "error_logs": [
+   "unexpected exemplar attached to series test_hist_sum",
+   "exemplar value 200 observed on test_hist_count for data point with no exemplars",
+   "remote-write histogram translation produced extra exemplars across data points"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestAddHistogramDataPoints_ExemplarLeakAcrossDataPoints$' ./storage/remote/otlptranslator/prometheusremotewrite"
+  ],
+  "relevant_files": [
+   "storage/remote/otlptranslator/prometheusremotewrite/helper.go",
+   "storage/remote/otlptranslator/prometheusremotewrite/helper_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

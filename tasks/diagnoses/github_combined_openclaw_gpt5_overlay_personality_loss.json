@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_gpt5_overlay_personality_loss",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The GPT-5 personality overlay sections appear in prompts when the model is requested directly from OpenAI, but those sections vanish when the very same GPT-5 model is served through an aggregator service. The generated prompt is missing the expected personality and interaction-style content.",
+    "root_cause": "Within the overlay-selection routine in the prompt overlay module, the logic that decides whether a request qualifies for the GPT-5 overlay only recognizes the model when it is reported under the canonical direct provider and bare model name. When an aggregator front-ends the model, the provider label and the model identifier arrive in a decorated or namespaced form, so the equality-style matching the routine performs fails to recognize it as the same underlying GPT-5 model. Because the match fails, the routine treats the aggregator-routed request as ineligible and skips attaching the overlay, even though the model is identical. The matching is simply too narrow to account for the alternate naming and prefixing that aggregators introduce.",
+    "remediation": "Broaden the provider/model matching in the overlay-selection routine so it identifies the underlying GPT-5 model regardless of how an aggregator decorates or namespaces the provider label and model identifier. Normalize or pattern-match against the meaningful part of the model name and treat the aggregator providers as legitimate carriers of the same model, while leaving direct-provider and non-GPT-5 behavior unchanged.",
+    "evidence": [
+      "aggregator provider produced a prompt without the interaction-style section",
+      "direct OpenAI provider still included the GPT-5 overlay sections",
+      "GPT-5 overlay sections appear for direct OpenAI requests but disappear when the same GPT-5 model is served through aggregators"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The GPT-5 personality overlay sections appear in prompts when the model is requested directly from OpenAI, but those sections vanish when the very same GPT-5 model is served through an aggregator service. The generated prompt is missing the expected personality and interaction-style content.",
+    "root_cause": "The overlay is correctly selected for aggregator-routed requests, but the prompt-assembly step that splices the overlay text into the final system prompt drops it for those requests. Aggregator providers return their model metadata with different capability or section-budget hints, and the assembly routine truncates or filters optional sections when it believes the downstream provider has a tighter context budget or does not advertise support for extended persona sections. As a result the personality and interaction-style blocks are computed but then trimmed away during final prompt composition for aggregator paths, while the direct path keeps them because its metadata advertises full section support.",
+    "remediation": "Adjust the prompt-assembly and section-budgeting step so that optional persona and interaction-style sections are preserved regardless of the capability or context-budget hints reported by aggregator providers, ensuring the assembled prompt is not trimmed differently based on the carrier's advertised metadata.",
+    "evidence": [
+      "aggregator provider produced a prompt without the interaction-style section",
+      "direct OpenAI provider still included the GPT-5 overlay sections",
+      "GPT-5 overlay sections appear for direct OpenAI requests but disappear when the same GPT-5 model is served through aggregators"
+    ]
+  },
+  "wrong_rationale": "It is plausible because the symptom is exactly \"sections present on the direct path, absent on the aggregator path,\" which superficially fits a downstream trimming/budgeting theory, and aggregators genuinely do report different metadata. It is incorrect because the overlay is never selected at all for aggregator-routed requests due to over-narrow provider/model matching; an engineer fixing the assembly/budgeting step would edit the wrong subsystem and the overlay would still be skipped before assembly ever runs."
+}

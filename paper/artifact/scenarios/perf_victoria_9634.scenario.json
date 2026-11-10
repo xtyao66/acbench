@@ -1,0 +1,113 @@
+{
+ "scenario_id": "perf_victoria_9634",
+ "title": "Set.Subtract always scans the argument set, so subtracting a huge set from a small one is needlessly slow",
+ "mode": "combined",
+ "service": {
+  "application": "victoria",
+  "service": "uint64set",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_victoria_9634"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/VictoriaMetrics/VictoriaMetrics",
+  "base_commit": "686289c02bb9ab6fc6b9a66be6f52c29ddf54fde",
+  "pr_url": "https://github.com/VictoriaMetrics/VictoriaMetrics/pull/9634",
+  "license_note": "Real upstream victoria optimization PR #9634; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up (*Set).Subtract in lib/uint64set: it always iterates over the argument set a and calls Del on s for every element, which is wasteful when a is far larger than s.",
+  "instructions": "Optimize the lib/uint64set package for speed WITHOUT changing behavior. The benchmark BenchmarkSubtract measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./lib/uint64set"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "lib/uint64set/uint64set_timing_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "lib/uint64set",
+   "benchmark": "BenchmarkSubtract",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 13.11
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "victoria-9634",
+  "description": "(*Set).Subtract unconditionally walks the argument set a and deletes each element from s, so subtracting a large a from a small s does O(len(a)) work instead of O(len(s)).",
+  "target_files": [
+   "lib/uint64set/uint64set.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "victoria-9634",
+  "description": "Index search with a huge number of deleted series spends excessive CPU in uint64set Subtract because it scans the larger of the two sets unconditionally.",
+  "detection_keywords": [
+   "high CPU in Subtract hot loop",
+   "slow ns/op on large subtract",
+   "scales with len(a) not len(s)",
+   "wasteful Del calls",
+   "index search slow with many deleted series"
+  ],
+  "localization_keywords": [
+   "uint64set.go",
+   "Set.Subtract",
+   "a.ForEach delete loop",
+   "lib/uint64set"
+  ],
+  "repair_keywords": [
+   "branch on s.Len() >= a.Len()",
+   "iterate the smaller set",
+   "s.ForEach with a.Has(x) membership check",
+   "avoid scanning the larger set"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Subtracting one uint64 set from another gets very slow when the set being removed is much larger than the target; index searches over series with many deletions burn CPU in Set.Subtract.",
+  "error_logs": [
+   "pprof: 71% of Subtract samples in uint64set.(*Set).Del via a.ForEach, work scales with len(a) even when len(s) is tiny"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkSubtract$' ./lib/uint64set"
+  ],
+  "relevant_files": [
+   "lib/uint64set/uint64set.go"
+  ],
+  "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "victoria"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

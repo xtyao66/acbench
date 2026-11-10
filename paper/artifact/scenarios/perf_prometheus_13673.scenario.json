@@ -1,0 +1,115 @@
+{
+ "scenario_id": "perf_prometheus_13673",
+ "title": "Labels.String() is slow and allocation-heavy because it grows a heap bytes.Buffer and allocates a fresh quoted string per label value",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "labels",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_prometheus_13673"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "d08f0549506714d417b667fb5af75b7471bbd4d4",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/13673",
+  "license_note": "Real upstream prometheus optimization PR #13673; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up Labels.String() so it stops allocating a heap-growing buffer and a fresh quoted string for every label value, without changing the rendered output.",
+  "instructions": "Optimize the model/labels package for speed WITHOUT changing behavior. The benchmark BenchmarkString measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./model/labels"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "model/labels/labels_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "model/labels",
+   "benchmark": "BenchmarkString",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 1.52
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-13673",
+  "description": "Labels.String() allocates a heap-growing bytes.Buffer and calls strconv.Quote per label, producing a fresh quoted string allocation for every value on a hot serialization path.",
+  "target_files": [
+   "model/labels/labels_common.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-13673",
+  "description": "CPU/alloc profile of label-set serialization shows bytes.Buffer growth and per-label strconv.Quote string allocations dominating Labels.String() in model/labels/labels_common.go.",
+  "detection_keywords": [
+   "excessive allocations per call",
+   "GC pressure from per-label quoted strings",
+   "heap bytes.Buffer growth in hot loop",
+   "slow ns/op serializing label sets",
+   "strconv.Quote allocation overhead"
+  ],
+  "localization_keywords": [
+   "labels_common.go",
+   "Labels.String method",
+   "bytes.Buffer in String()",
+   "strconv.Quote(l.Value) per-label",
+   "Range callback WriteString loop"
+  ],
+  "repair_keywords": [
+   "stack-allocated [1024]byte scratch buffer",
+   "bytes.NewBuffer(bytea[:0]) to avoid heap alloc",
+   "strconv.AppendQuote instead of strconv.Quote",
+   "b.AvailableBuffer() to append in place",
+   "avoid intermediate quoted string allocation"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Serializing a Labels set to its text form via Labels.String() is unexpectedly slow and allocation-heavy, showing up in CPU and allocation profiles wherever label sets are formatted for logs, errors, or output.",
+  "error_logs": [
+   "pprof: 38.7% cpu/alloc in model/labels.Labels.String -> strconv.Quote + bytes.(*Buffer).grow; BenchmarkString ~520 ns/op, 11 allocs/op"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkString$' ./model/labels"
+  ],
+  "relevant_files": [
+   "model/labels/labels_common.go"
+  ],
+  "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

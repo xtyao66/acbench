@@ -1,0 +1,41 @@
+{
+  "name": "acbench-local-full-suite",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/local/code/billing_pricing__bundle_discount_threshold.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/code/feature_router__denylist_precedence.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/code/maintenance_window__overnight_rollover.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/cache_api__stale_index_alert.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/queue_worker__backlog_spike.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/payments_api__restart_loop_diagnosis.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/auth_service__token_clock_skew.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/api_server__db_connection_pool_exhaustion.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/notifier__dead_letter_queue_overflow.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/billing_pricing__checkout_totals_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/feature_router__rollout_guard_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/maintenance_window__midnight_skip_incident.scenario.json"
+    }
+  ]
+}

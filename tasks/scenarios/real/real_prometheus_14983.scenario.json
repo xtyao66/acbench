@@ -1,0 +1,117 @@
+{
+ "scenario_id": "real_prometheus_14983",
+ "title": "The merge querier shares one matcher slice across concurrent querier goroutines, so a querier that mutates the slice ...",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "tsdb",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_prometheus_14983"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "ad4857de5210",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/14983",
+  "license_note": "Real upstream prometheus PR #14983; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "The merge querier shares one matcher slice across concurrent querier goroutines, so a querier that mutates the slice triggers a data race and can corrupt other queriers' matchers.",
+  "instructions": "Fix the defect in the tsdb package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -race -run '^TestMergeQuerierConcurrentSelectMatchers$' ./tsdb"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "tsdb.TestMergeQuerierConcurrentSelectMatchers"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "tsdb.TestMergeQuerierConcurrentSelectMatchers"
+  ],
+  "forbidden_paths": [
+   "tsdb/querier_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-14983",
+  "description": "mergeGenericQuerier.Select passes the same shared matchers slice into multiple querier goroutines, and a querier that alters the slice in place causes a concurrent data race.",
+  "target_files": [
+   "storage/merge.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-14983",
+  "description": "Concurrent Select across merged queriers races on a shared matcher slice, producing intermittent data races and occasional wrong query results.",
+  "detection_keywords": [
+   "data race",
+   "race detector failure",
+   "concurrent Select",
+   "intermittent wrong query results",
+   "mutated matchers",
+   "flaky test panic"
+  ],
+  "localization_keywords": [
+   "merge.go",
+   "mergeGenericQuerier.Select",
+   "shared matchers slice passed to multiple goroutines",
+   "querier mutates matchers in place",
+   "blockQuerier alters matchers slice",
+   "matchers captured by reference in goroutine closure",
+   "concurrent select fan-out over queriers",
+   "issue 14723 matcher aliasing"
+  ],
+  "repair_keywords": [
+   "copy matchers per querier before goroutine",
+   "make and copy matchersCopy slice",
+   "pass matcher copy as goroutine argument",
+   "avoid aliasing the shared matchers slice"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "When querying through a merged querier backed by more than one querier, the race detector flags a data race and queries occasionally return incorrect results because one querier modifies the shared matcher slice while others read it.",
+  "error_logs": [
+   "WARNING: DATA RACE",
+   "Read at 0x00c0001a2000 by goroutine 42; Previous write at 0x00c0001a2000 by goroutine 41",
+   "race detected during execution of test TestMergeQuerierConcurrentSelectMatchers"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestMergeQuerierConcurrentSelectMatchers$' ./tsdb"
+  ],
+  "relevant_files": [
+   "storage/merge.go",
+   "tsdb/querier_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

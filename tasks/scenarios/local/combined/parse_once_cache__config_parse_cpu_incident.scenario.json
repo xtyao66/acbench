@@ -1,0 +1,153 @@
+{
+  "scenario_id": "combined_parse_once_cache_config_parse_cpu",
+  "title": "Ingress config-parse CPU incident with parse-once-cache repair",
+  "mode": "combined",
+  "service": {
+    "application": "ingress-gateway",
+    "service": "route-resolver",
+    "deployment": "local",
+    "repository_path": "services/fixtures/parse_once_cache_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "parse-once-cache-config-parse-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage an ingress-gateway CPU incident and stop the per-request re-parsing of the routing config.",
+    "instructions": "Use the incident clues to localize the CPU hotspot, apply a performance repair, and restore all resolver tests including the parse-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the resolver must serve a stream of requests while deserializing the routing-config document a small constant number of times, not once per request."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the ingress-gateway route-resolver workers saturated CPU and blew their p99 latency SLO under steady request volume. CPU time on the resolve path scales linearly with request rate, and the workers spend most of their time rebuilding the same configuration objects over and over.",
+    "error_logs": [
+      "alerts/route_resolver_cpu.log: resolve-path CPU time scales linearly with request rate; throughput collapses under load",
+      "profiler: the hottest frame is the JSON decoder (scanner/raw_decode), invoked once per request even though the configuration never changes between requests"
+    ],
+    "reproduction_steps": [
+      "Inspect the route-resolver fixture and run the unit tests.",
+      "Use the profiler clues to localize the hotspot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/route_config/",
+      "tests/test_resolver.py"
+    ],
+    "notes": "The incident points at repeated deserialization of an unchanging configuration document inside the per-request path, not at the size of the configuration itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-route-resolver-config-parse-cpu-incident-001",
+    "description": "Synthetic ingress-gateway CPU incident tied to the parse_once_cache fixture.",
+    "detection_keywords": [
+      "CPU saturation on the resolve path",
+      "p99 latency regression under steady load",
+      "CPU time scales linearly with request rate",
+      "throughput collapses under load"
+    ],
+    "localization_keywords": [
+      "JSON decoder is the hot frame",
+      "the same document is deserialized once per request",
+      "repeated parsing of an unchanging input inside the request path",
+      "redundant work that does not vary between requests",
+      "route-resolver"
+    ],
+    "repair_keywords": [
+      "parse the document once and cache the result",
+      "deserialize the configuration a single time and reuse it",
+      "memoize the parsed config",
+      "hoist the parse out of the per-request path",
+      "stop re-parsing the same input on every call",
+      "cache the decoded objects across requests",
+      "parse once then serve lookups from the cached structure"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "parse-once-cache-redundant-parse-001",
+    "description": "The route resolver deserializes the entire routing-config document with json.loads on every resolve call, paying the full parsing cost per request instead of once.",
+    "target_files": [
+      "src/route_config/resolver.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_resolver.RouteResolverTests::test_resolve_parses_config_once"
+    ],
+    "pass_to_pass": [
+      "test_resolver.RouteResolverTests::test_resolves_known_routes_to_backends",
+      "test_resolver.RouteResolverTests::test_unknown_route_falls_back_to_default",
+      "test_resolver.RouteResolverTests::test_effective_policy_is_fully_normalized",
+      "test_resolver.RouteResolverTests::test_repeated_and_mixed_lookups_are_stable"
+    ],
+    "required_tests": [
+      "test_resolver.RouteResolverTests::test_resolve_parses_config_once",
+      "test_resolver.RouteResolverTests::test_resolves_known_routes_to_backends",
+      "test_resolver.RouteResolverTests::test_unknown_route_falls_back_to_default",
+      "test_resolver.RouteResolverTests::test_effective_policy_is_fully_normalized",
+      "test_resolver.RouteResolverTests::test_repeated_and_mixed_lookups_are_stable"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that parses the configuration document once and serves every request from the cached parsed structure."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "parse_once_cache"
+  ],
+  "notes": "Combined ingress-gateway config-parse CPU incident and parse-once-cache repair task.",
+  "gold_patch_path": "patches/parse_once_cache_config_cache_fix.diff"
+}

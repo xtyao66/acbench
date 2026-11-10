@@ -1,0 +1,10 @@
+--- a/src/openclaw_completion_runtime/runtime.py
++++ b/src/openclaw_completion_runtime/runtime.py
+@@ -34,5 +34,4 @@ class CompletionRuntime:
+     def _cleanup_session_processes(self, session_id: str) -> None:
+         for pid, process in list(self.processes.items()):
+             if process.session_id != session_id:
+                 continue
+-            if process.status == "running":
+-                del self.processes[pid]
++            del self.processes[pid]

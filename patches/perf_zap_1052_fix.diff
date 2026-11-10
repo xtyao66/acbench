@@ -1,0 +1,307 @@
+diff --git a/logger.go b/logger.go
+index c5948a6cf..087c74222 100644
+--- a/logger.go
++++ b/logger.go
+@@ -24,9 +24,9 @@ import (
+ 	"fmt"
+ 	"io/ioutil"
+ 	"os"
+-	"runtime"
+ 	"strings"
+ 
++	"go.uber.org/zap/internal/bufferpool"
+ 	"go.uber.org/zap/zapcore"
+ )
+ 
+@@ -259,8 +259,10 @@ func (log *Logger) clone() *Logger {
+ }
+ 
+ func (log *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
+-	// check must always be called directly by a method in the Logger interface
+-	// (e.g., Check, Info, Fatal).
++	// Logger.check must always be called directly by a method in the
++	// Logger interface (e.g., Check, Info, Fatal).
++	// This skips Logger.check and the Info/Fatal/Check/etc. method that
++	// called it.
+ 	const callerSkipOffset = 2
+ 
+ 	// Check the level first to reduce the cost of disabled log calls.
+@@ -307,42 +309,55 @@ func (log *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
+ 
+ 	// Thread the error output through to the CheckedEntry.
+ 	ce.ErrorOutput = log.errorOutput
+-	if log.addCaller {
+-		frame, defined := getCallerFrame(log.callerSkip + callerSkipOffset)
+-		if !defined {
++
++	addStack := log.addStack.Enabled(ce.Level)
++	if !log.addCaller && !addStack {
++		return ce
++	}
++
++	// Adding the caller or stack trace requires capturing the callers of
++	// this function. We'll share information between these two.
++	stackDepth := stacktraceFirst
++	if addStack {
++		stackDepth = stacktraceFull
++	}
++	stack := captureStacktrace(log.callerSkip+callerSkipOffset, stackDepth)
++	defer stack.Free()
++
++	if stack.Count() == 0 {
++		if log.addCaller {
+ 			fmt.Fprintf(log.errorOutput, "%v Logger.check error: failed to get caller\n", ent.Time.UTC())
+ 			log.errorOutput.Sync()
+ 		}
++		return ce
++	}
+ 
++	frame, more := stack.Next()
++
++	if log.addCaller {
+ 		ce.Caller = zapcore.EntryCaller{
+-			Defined:  defined,
++			Defined:  frame.PC != 0,
+ 			PC:       frame.PC,
+ 			File:     frame.File,
+ 			Line:     frame.Line,
+ 			Function: frame.Function,
+ 		}
+ 	}
+-	if log.addStack.Enabled(ce.Level) {
+-		ce.Stack = StackSkip("", log.callerSkip+callerSkipOffset).String
+-	}
+ 
+-	return ce
+-}
++	if addStack {
++		buffer := bufferpool.Get()
++		defer buffer.Free()
+ 
+-// getCallerFrame gets caller frame. The argument skip is the number of stack
+-// frames to ascend, with 0 identifying the caller of getCallerFrame. The
+-// boolean ok is false if it was not possible to recover the information.
+-//
+-// Note: This implementation is similar to runtime.Caller, but it returns the whole frame.
+-func getCallerFrame(skip int) (frame runtime.Frame, ok bool) {
+-	const skipOffset = 2 // skip getCallerFrame and Callers
+-
+-	pc := make([]uintptr, 1)
+-	numFrames := runtime.Callers(skip+skipOffset, pc)
+-	if numFrames < 1 {
+-		return
++		stackfmt := newStackFormatter(buffer)
++
++		// We've already extracted the first frame, so format that
++		// separately and defer to stackfmt for the rest.
++		stackfmt.FormatFrame(frame)
++		if more {
++			stackfmt.FormatStack(stack)
++		}
++		ce.Stack = buffer.String()
+ 	}
+ 
+-	frame, _ = runtime.CallersFrames(pc).Next()
+-	return frame, frame.PC != 0
++	return ce
+ }
+diff --git a/stacktrace.go b/stacktrace.go
+index 0cf8c1ddf..3d187fa56 100644
+--- a/stacktrace.go
++++ b/stacktrace.go
+@@ -24,62 +24,153 @@ import (
+ 	"runtime"
+ 	"sync"
+ 
++	"go.uber.org/zap/buffer"
+ 	"go.uber.org/zap/internal/bufferpool"
+ )
+ 
+-var (
+-	_stacktracePool = sync.Pool{
+-		New: func() interface{} {
+-			return newProgramCounters(64)
+-		},
+-	}
++var _stacktracePool = sync.Pool{
++	New: func() interface{} {
++		return &stacktrace{
++			storage: make([]uintptr, 64),
++		}
++	},
++}
++
++type stacktrace struct {
++	pcs    []uintptr // program counters; always a subslice of storage
++	frames *runtime.Frames
++
++	// The size of pcs varies depending on requirements:
++	// it will be one if the only the first frame was requested,
++	// and otherwise it will reflect the depth of the call stack.
++	//
++	// storage decouples the slice we need (pcs) from the slice we pool.
++	// We will always allocate a reasonably large storage, but we'll use
++	// only as much of it as we need.
++	storage []uintptr
++}
++
++// stacktraceDepth specifies how deep of a stack trace should be captured.
++type stacktraceDepth int
++
++const (
++	// stacktraceFirst captures only the first frame.
++	stacktraceFirst stacktraceDepth = iota
++
++	// stacktraceFull captures the entire call stack, allocating more
++	// storage for it if needed.
++	stacktraceFull
+ )
+ 
+-func takeStacktrace(skip int) string {
+-	buffer := bufferpool.Get()
+-	defer buffer.Free()
+-	programCounters := _stacktracePool.Get().(*programCounters)
+-	defer _stacktracePool.Put(programCounters)
+-
+-	var numFrames int
+-	for {
+-		// Skip the call to runtime.Callers and takeStacktrace so that the
+-		// program counters start at the caller of takeStacktrace.
+-		numFrames = runtime.Callers(skip+2, programCounters.pcs)
+-		if numFrames < len(programCounters.pcs) {
+-			break
+-		}
+-		// Don't put the too-short counter slice back into the pool; this lets
+-		// the pool adjust if we consistently take deep stacktraces.
+-		programCounters = newProgramCounters(len(programCounters.pcs) * 2)
++// captureStacktrace captures a stack trace of the specified depth, skipping
++// the provided number of frames. skip=0 identifies the caller of
++// captureStacktrace.
++//
++// The caller must call Free on the returned stacktrace after using it.
++func captureStacktrace(skip int, depth stacktraceDepth) *stacktrace {
++	stack := _stacktracePool.Get().(*stacktrace)
++
++	switch depth {
++	case stacktraceFirst:
++		stack.pcs = stack.storage[:1]
++	case stacktraceFull:
++		stack.pcs = stack.storage
+ 	}
+ 
+-	i := 0
+-	frames := runtime.CallersFrames(programCounters.pcs[:numFrames])
++	// Unlike other "skip"-based APIs, skip=0 identifies runtime.Callers
++	// itself. +2 to skip captureStacktrace and runtime.Callers.
++	numFrames := runtime.Callers(
++		skip+2,
++		stack.pcs,
++	)
+ 
+-	// Note: On the last iteration, frames.Next() returns false, with a valid
+-	// frame, but we ignore this frame. The last frame is a a runtime frame which
+-	// adds noise, since it's only either runtime.main or runtime.goexit.
+-	for frame, more := frames.Next(); more; frame, more = frames.Next() {
+-		if i != 0 {
+-			buffer.AppendByte('\n')
++	// runtime.Callers truncates the recorded stacktrace if there is no
++	// room in the provided slice. For the full stack trace, keep expanding
++	// storage until there are fewer frames than there is room.
++	if depth == stacktraceFull {
++		pcs := stack.pcs
++		for numFrames == len(pcs) {
++			pcs = make([]uintptr, len(pcs)*2)
++			numFrames = runtime.Callers(skip+2, pcs)
+ 		}
+-		i++
+-		buffer.AppendString(frame.Function)
+-		buffer.AppendByte('\n')
+-		buffer.AppendByte('\t')
+-		buffer.AppendString(frame.File)
+-		buffer.AppendByte(':')
+-		buffer.AppendInt(int64(frame.Line))
++
++		// Discard old storage instead of returning it to the pool.
++		// This will adjust the pool size over time if stack traces are
++		// consistently very deep.
++		stack.storage = pcs
++		stack.pcs = pcs[:numFrames]
++	} else {
++		stack.pcs = stack.pcs[:numFrames]
+ 	}
+ 
++	stack.frames = runtime.CallersFrames(stack.pcs)
++	return stack
++}
++
++// Free releases resources associated with this stacktrace
++// and returns it back to the pool.
++func (st *stacktrace) Free() {
++	st.frames = nil
++	st.pcs = nil
++	_stacktracePool.Put(st)
++}
++
++// Count reports the total number of frames in this stacktrace.
++// Count DOES NOT change as Next is called.
++func (st *stacktrace) Count() int {
++	return len(st.pcs)
++}
++
++// Next returns the next frame in the stack trace,
++// and a boolean indicating whether there are more after it.
++func (st *stacktrace) Next() (_ runtime.Frame, more bool) {
++	return st.frames.Next()
++}
++
++func takeStacktrace(skip int) string {
++	stack := captureStacktrace(skip+1, stacktraceFull)
++	defer stack.Free()
++
++	buffer := bufferpool.Get()
++	defer buffer.Free()
++
++	stackfmt := newStackFormatter(buffer)
++	stackfmt.FormatStack(stack)
+ 	return buffer.String()
+ }
+ 
+-type programCounters struct {
+-	pcs []uintptr
++// stackFormatter formats a stack trace into a readable string representation.
++type stackFormatter struct {
++	b        *buffer.Buffer
++	nonEmpty bool // whehther we've written at least one frame already
++}
++
++// newStackFormatter builds a new stackFormatter.
++func newStackFormatter(b *buffer.Buffer) stackFormatter {
++	return stackFormatter{b: b}
++}
++
++// FormatStack formats all remaining frames in the provided stacktrace -- minus
++// the final runtime.main/runtime.goexit frame.
++func (sf *stackFormatter) FormatStack(stack *stacktrace) {
++	// Note: On the last iteration, frames.Next() returns false, with a valid
++	// frame, but we ignore this frame. The last frame is a a runtime frame which
++	// adds noise, since it's only either runtime.main or runtime.goexit.
++	for frame, more := stack.Next(); more; frame, more = stack.Next() {
++		sf.FormatFrame(frame)
++	}
+ }
+ 
+-func newProgramCounters(size int) *programCounters {
+-	return &programCounters{make([]uintptr, size)}
++// FormatFrame formats the given frame.
++func (sf *stackFormatter) FormatFrame(frame runtime.Frame) {
++	if sf.nonEmpty {
++		sf.b.AppendByte('\n')
++	}
++	sf.nonEmpty = true
++	sf.b.AppendString(frame.Function)
++	sf.b.AppendByte('\n')
++	sf.b.AppendByte('\t')
++	sf.b.AppendString(frame.File)
++	sf.b.AppendByte(':')
++	sf.b.AppendInt(int64(frame.Line))
+ }

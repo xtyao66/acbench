@@ -1,0 +1,13 @@
+diff --git a/server/gsl/gsl.go b/server/gsl/gsl.go
+index d4507b282bf..aa16f9f5386 100644
+--- a/server/gsl/gsl.go
++++ b/server/gsl/gsl.go
+@@ -371,6 +371,8 @@ func (s *GenericSublist[T]) Remove(subject string, value T) error {
+ 
+ // HasInterestStartingIn is a helper for subject tree intersection.
+ func (s *GenericSublist[T]) HasInterestStartingIn(subj string) bool {
++	s.RLock()
++	defer s.RUnlock()
+ 	var _tokens [64]string
+ 	tokens := tokenizeSubjectIntoSlice(_tokens[:0], subj)
+ 	return hasInterestStartingIn(s.root, tokens)

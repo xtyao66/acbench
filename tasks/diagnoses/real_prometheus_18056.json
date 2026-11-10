@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_18056",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When an OTLP histogram metric contains several data points, an exemplar belonging to one data point unexpectedly appears on the sum-suffixed and count-suffixed series produced for later data points after remote-write translation.",
+    "root_cause": "In the remote-write translation helper that walks an OTLP histogram's data points one at a time, the routine that emits the sum and count samples reuses a single shared collection of pending exemplars across every iteration of the per-data-point loop. Because that collection is never emptied at the start of each data point, the exemplars gathered for one data point remain present when the next data point is processed, and they are therefore attached again to the sum and count series of the following data points. The defect lives in the histogram-handling routine of the translator module for converting OTLP histograms to remote-write samples.",
+    "remediation": "Ensure the exemplar collection used when emitting the sum and count samples is scoped to a single data point: reset or re-initialize it at the beginning of each data point iteration (or build a fresh per-data-point collection) so that exemplars from a prior data point cannot carry over into subsequent ones.",
+    "evidence": [
+      "Failing test: regression test asserting no exemplar leak across histogram data points",
+      "Log: unexpected exemplar attached to the sum-suffixed series",
+      "Log: an exemplar value observed on the count-suffixed series for a data point that has no exemplars"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When an OTLP histogram metric contains several data points, an exemplar belonging to one data point unexpectedly appears on the sum-suffixed and count-suffixed series produced for later data points after remote-write translation.",
+    "root_cause": "The routine that converts each OTLP exemplar into the remote-write exemplar representation does so by aliasing rather than copying: it stores a reference to the underlying exemplar object that the OTLP data structure backs with a shared, reused buffer. As the data-point loop advances, the upstream histogram structure overwrites that backing buffer in place for the next data point, so the previously stored reference now points at the new data point's exemplar data while still being associated with the earlier sum and count series. The mistake is therefore in the exemplar conversion and attribute-copying step, which fails to take a deep, value copy of each exemplar's fields at the moment it is captured.",
+    "remediation": "Change the exemplar conversion step so that every exemplar's value, timestamp, and label attributes are deep-copied into freshly allocated storage at capture time, preventing later in-place reuse of the source buffer from mutating exemplars that were already recorded for earlier series.",
+    "evidence": [
+      "Failing test: regression test asserting no exemplar leak across histogram data points",
+      "Log: unexpected exemplar attached to the sum-suffixed series",
+      "Log: an exemplar value observed on the count-suffixed series for a data point that has no exemplars"
+    ]
+  },
+  "wrong_rationale": "It is plausible because aliasing a reused backing buffer is a classic source of cross-iteration data bleed in Go OTLP processing, and it explains the same symptom; however it misdirects the engineer to deep-copy exemplar fields in the conversion step, when the real fault is simply that the shared pending-exemplar collection is never cleared between data points, so the leak would persist even with deep copies."
+}

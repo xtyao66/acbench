@@ -1,0 +1,14 @@
+{
+  "name": "perf_g3",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_gojson_345.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_grpc_5654.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoriametrics_5721.scenario.json"
+    }
+  ]
+}

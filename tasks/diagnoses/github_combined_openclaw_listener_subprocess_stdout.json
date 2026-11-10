@@ -1,0 +1,37 @@
+{
+  "scenario_id": "github_combined_openclaw_listener_subprocess_stdout",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a subprocess emits standard-output text after its run has already finished, the listener that handles that output crashes the gateway instead of quietly ignoring the late event.",
+    "root_cause": "In the agent-loop module, the listener that receives subprocess output checks whether a run is currently active, but when it finds no active run it treats this as a fatal condition and raises an error rather than simply discarding the stray output. Because subprocess output can legitimately arrive a moment after the run has been torn down, this guard fires during normal teardown timing and the resulting unhandled error propagates up and brings the gateway down. The guard conflates an expected, benign late-arrival case with a genuine programming error.",
+    "remediation": "Change the listener's out-of-run guard so that output arriving after the run has ended is detected and safely dropped (a no-op return), while still processing output normally during an active run. The late-arrival path should not raise.",
+    "evidence": [
+      "subprocess stdout event arrived after run end",
+      "Unhandled promise rejection: Agent listener invoked outside active run"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a subprocess emits standard-output text after its run has already finished, the listener that handles that output crashes the gateway instead of quietly ignoring the late event.",
+    "root_cause": "The crash stems from the run-lifecycle teardown not properly unsubscribing or detaching the output listener when a run completes. Because the listener is left registered against the subprocess output stream after the run object has been disposed, the stream keeps delivering buffered text to a handler whose backing run state is already gone. The real defect is the missing cleanup step in the shutdown sequence that should remove the subscription before the run state is discarded, leaving a dangling callback that fires against a torn-down context.",
+    "remediation": "In the run completion and teardown path, explicitly unregister the subprocess output listener and close or drain the output stream before disposing of the run state, so no callbacks can fire once the run has ended.",
+    "evidence": [
+      "subprocess stdout event arrived after run end",
+      "Unhandled promise rejection: Agent listener invoked outside active run"
+    ]
+  },
+  "wrong_rationale": "The dangling-listener theory is plausible because late output reaching a handler after teardown genuinely looks like a missed unsubscribe, and fixing cleanup is a natural instinct. It is wrong because the late arrival is inherent to subprocess timing and unavoidable; the actual defect is that the existing in-run guard raises instead of dropping the event, so editing the teardown/unsubscribe path leaves the raising guard untouched and the crash unfixed."
+}

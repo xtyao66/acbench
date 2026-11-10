@@ -1,0 +1,115 @@
+{
+ "scenario_id": "perf_victoria_8489",
+ "title": "The 'or' binary operator is slow: MetricName comparison reallocates strings inside a nested per-series loop",
+ "mode": "combined",
+ "service": {
+  "application": "victoria",
+  "service": "promql",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_victoria_8489"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/VictoriaMetrics/VictoriaMetrics",
+  "base_commit": "8b0129f29ba8eabdd57cd8a5188623fabce9efa0",
+  "pr_url": "https://github.com/VictoriaMetrics/VictoriaMetrics/pull/8489",
+  "license_note": "Real upstream victoria optimization PR #8489; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up the PromQL 'or' binary operator by removing redundant per-iteration MetricName string allocations and comparisons in fillLeftNaNsWithRightValuesOrMerge.",
+  "instructions": "Optimize the app/vmselect/promql package for speed WITHOUT changing behavior. The benchmark BenchmarkBinaryOpOr measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./app/vmselect/promql"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "app/vmselect/promql/binary_op_timing_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "app/vmselect/promql",
+   "benchmark": "BenchmarkBinaryOpOr",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 2.35
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "victoria-8489",
+  "description": "fillLeftNaNsWithRightValuesOrMerge calls MetricName.String() for every left/right series pair inside a nested loop, allocating a fresh string each iteration and lacking a scalar fast path.",
+  "target_files": [
+   "app/vmselect/promql/binary_op.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "victoria-8489",
+  "description": "Profiling of 'a or b' queries shows the 'or' operator dominated by MetricName.String() allocations in fillLeftNaNsWithRightValuesOrMerge.",
+  "detection_keywords": [
+   "slow ns/op for binary 'or' operator",
+   "excessive allocations in hot loop",
+   "GC pressure from per-iteration string allocation",
+   "high CPU in fillLeftNaNsWithRightValuesOrMerge",
+   "performance regression since v1.111.0"
+  ],
+  "localization_keywords": [
+   "binary_op.go",
+   "fillLeftNaNsWithRightValuesOrMerge",
+   "binaryOpOr",
+   "MetricName.String() in nested left/right loop",
+   "tsRight.MetricName.String() recomputed per iteration"
+  ],
+  "repair_keywords": [
+   "add scalar fast path via isScalar to skip MetricName comparison",
+   "marshalMetricNameSorted into pooled bbPool byte buffers",
+   "compare with bytes.Equal instead of MetricName.String()",
+   "hoist nameLeft marshaling out of inner loop",
+   "avoid per-iteration string allocation, reuse buffers"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Queries using the 'or' binary operator (e.g. 'a or b') became significantly slower after v1.111.0; CPU profiles point at MetricName comparison work when filling left NaNs with right values.",
+  "error_logs": [
+   "pprof: 71% cpu in promql.fillLeftNaNsWithRightValuesOrMerge -> storage.(*MetricName).String -> runtime.mallocgc (string alloc per series pair)"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkBinaryOpOr$' ./app/vmselect/promql"
+  ],
+  "relevant_files": [
+   "app/vmselect/promql/binary_op.go"
+  ],
+  "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "victoria"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

@@ -1,0 +1,1 @@
+"""Quote pricing fixture package."""

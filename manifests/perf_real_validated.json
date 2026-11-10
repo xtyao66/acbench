@@ -1,0 +1,48 @@
+{
+  "name": "perf_real_validated",
+  "description": "Validated real-PR Go perf scenarios (gold applies+correct, measured speedup>=1.15x on GB200). Original 6 (prometheus/victoria) + 8 from the 2026 expansion (sonic/fasthttp/go-json/grpc/vm/promql).",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_13673.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17067.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17439.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_6432.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_8489.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoria_9634.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_845.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_fasthttp_1893.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_gojson_345.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_grpc_5654.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoriametrics_5721.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17131.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_grpc_6743.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_789.scenario.json"
+    }
+  ]
+}

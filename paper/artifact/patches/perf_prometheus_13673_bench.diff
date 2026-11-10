@@ -1,0 +1,31 @@
+diff --git a/model/labels/labels_test.go b/model/labels/labels_test.go
+index c2ac6d63a02..49b4b4e67b4 100644
+--- a/model/labels/labels_test.go
++++ b/model/labels/labels_test.go
+@@ -42,7 +42,26 @@ func TestLabels_String(t *testing.T) {
+ 		require.Equal(t, c.expected, str)
+ 	}
+ }
+ 
++var benchmarkLabels = []Label{
++	{"job", "node"},
++	{"instance", "123.123.1.211:9090"},
++	{"path", "/api/v1/namespaces/<namespace>/deployments/<name>"},
++	{"method", "GET"},
++	{"namespace", "system"},
++	{"status", "500"},
++	{"prometheus", "prometheus-core-1"},
++	{"datacenter", "eu-west-1"},
++	{"pod_name", "abcdef-99999-defee"},
++}
++
++func BenchmarkString(b *testing.B) {
++	ls := New(benchmarkLabels...)
++	for i := 0; i < b.N; i++ {
++		_ = ls.String()
++	}
++}
++
+ func TestLabels_MatchLabels(t *testing.T) {
+ 	labels := FromStrings(
+ 		"__name__", "ALERTS",

@@ -1,0 +1,147 @@
+{
+  "scenario_id": "github_combined_openclaw_discord_slash_done",
+  "title": "OpenClaw Discord slash commands should return content instead of bare Done responses",
+  "mode": "combined",
+  "service": {
+    "application": "openclaw",
+    "service": "discord-command-dispatch",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_discord_commands_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.3.23-2",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/53416",
+    "snapshot_key": "openclaw-53416-localized-fixture-v1",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #53416."
+  },
+  "task": {
+    "summary": "Triage why native Discord slash commands reply with `Done` and repair the interaction dispatch path.",
+    "instructions": "Use the incident clues to localize why native slash interactions are routing through the wrong command path, repair the dispatcher so native commands return their response content, and preserve existing plugin-command behavior on the text path.",
+    "acceptance_notes": "Both ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Native Discord slash commands acknowledge with `✅ Done` but never send their real response content after the Carbon reconcile migration.",
+    "error_logs": [
+      "Slow listener detected: InteractionEventListener took 1026ms for event INTERACTION_CREATE",
+      "discord slash command /status resolved with Done. but no status payload"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_discord_commands/commands.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_discord_commands/commands.py",
+      "tests/test_commands.py"
+    ],
+    "notes": "This fixture models the interaction dispatch path, not the full Carbon runtime."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-53416-discord-slash-done",
+    "description": "Synthetic interaction incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "Done",
+      "slash command",
+      "InteractionEventListener"
+    ],
+    "localization_keywords": [
+      "Carbon reconcile",
+      "plugin command path",
+      "native interaction",
+      "dispatch"
+    ],
+    "repair_keywords": [
+      "skip plugin match for native interaction",
+      "native command dispatch",
+      "follow-up response",
+      "return status card",
+      "interaction lifecycle"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-53416-native-slash-dispatch",
+    "description": "Native slash interactions are routed through the plugin-command path and return a fallback Done response instead of the command output.",
+    "target_files": [
+      "src/openclaw_discord_commands/commands.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_commands.DiscordCommandDispatchTests::test_native_status_interaction_returns_status_card"
+    ],
+    "pass_to_pass": [
+      "test_commands.DiscordCommandDispatchTests::test_plugin_commands_still_render_on_the_text_path",
+      "test_commands.DiscordCommandDispatchTests::test_unknown_text_messages_pass_through"
+    ],
+    "required_tests": [
+      "test_commands.DiscordCommandDispatchTests::test_native_status_interaction_returns_status_card",
+      "test_commands.DiscordCommandDispatchTests::test_plugin_commands_still_render_on_the_text_path",
+      "test_commands.DiscordCommandDispatchTests::test_unknown_text_messages_pass_through"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This GitHub-derived reproduction expects incident localization and a code repair."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "discord",
+      "command-dispatch"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "combined"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #53416.",
+  "gold_patch_path": "patches/github/openclaw_discord_slash_followup_fix.diff"
+}

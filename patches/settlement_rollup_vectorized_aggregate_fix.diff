@@ -1,0 +1,24 @@
+diff --git a/src/settlement_rollup/rollup.py b/src/settlement_rollup/rollup.py
+index 504dc46..7df7ee4 100644
+--- a/src/settlement_rollup/rollup.py
++++ b/src/settlement_rollup/rollup.py
+@@ -40,14 +40,11 @@ def roll_up_settlement(amounts: list[float]) -> Settlement:
+ 
+     count = len(amounts)
+ 
+-    # Elementwise accumulation: walk the entire batch one line item at a time in
+-    # Python, adding each amount onto a running total. Every iteration pays the
+-    # full per-element interpreter overhead (bytecode dispatch, boxing the
+-    # intermediate float), so for a batch of N line items the rollup costs N slow
+-    # Python-level additions instead of one bulk pass.
+-    total = 0.0
+-    for amount in amounts:
+-        total = total + amount
++    # Bulk reduction: ``sum`` performs the whole aggregation in C with a single
++    # call, so the rollup costs one bulk pass over the batch instead of N slow
++    # Python-level additions. Same gross total, no per-element interpreter
++    # overhead.
++    total = sum(amounts)
+ 
+     mean = total / count if count else 0.0
+     return Settlement(total=total, count=count, mean=mean)

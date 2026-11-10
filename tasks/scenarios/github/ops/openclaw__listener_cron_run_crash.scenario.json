@@ -1,0 +1,112 @@
+{
+  "scenario_id": "github_ops_openclaw_listener_cron_run_crash",
+  "title": "OpenClaw should not crash when cron-triggered output arrives after the active run ends",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62876",
+    "snapshot_key": "openclaw-62876-synthetic-ops-v2",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #62876."
+  },
+  "task": {
+    "summary": "Diagnose why `cron run` can crash the gateway when residual output arrives after the active run ends.",
+    "instructions": "Use the cron incident evidence to confirm the late-listener crash, localize it to missing active-run guards around update processing, and propose an ops-level repair plan that discards late cron output safely.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "Running `openclaw cron run <job-id>` can hang and then crash the gateway because late updates still reach the listener after the run ends.",
+    "error_logs": [
+      "openclaw cron run triggers Unhandled promise rejection",
+      "late stderr/update reached Agent.processEvents after the run ended"
+    ],
+    "reproduction_steps": [
+      "Inspect the cron-run failure evidence.",
+      "Explain where the listener path should stop accepting post-run updates."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models late-update triage in the cron-run path."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62876-cron-run-listener-crash-ops",
+    "description": "Synthetic listener-runtime incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "cron run",
+      "outside active run",
+      "Unhandled promise rejection"
+    ],
+    "localization_keywords": [
+      "listener",
+      "active run",
+      "late updates",
+      "stderr"
+    ],
+    "repair_keywords": [
+      "discard late output",
+      "active run guard",
+      "skip events after run end",
+      "cron stability"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "cron",
+      "listener-runtime"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #62876."
+}

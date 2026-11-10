@@ -1,0 +1,36 @@
+{
+ "name": "perf_real",
+ "description": "10 real Go optimization PRs (prometheus/nats/victoria) graded by measured speedup (go test -bench ns/op, behavior-gated).",
+ "scenarios": [
+  {
+   "scenario": "tasks/scenarios/perf/perf_nats_5573.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_nats_6908.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_prometheus_13673.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_prometheus_17067.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_prometheus_17439.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_prometheus_18699.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_victoria_5721.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_victoria_6432.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_victoria_8489.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/perf/perf_victoria_9634.scenario.json"
+  }
+ ]
+}

@@ -1,0 +1,147 @@
+{
+  "scenario_id": "combined_leaderboard_rank_sort_storm",
+  "title": "Leaderboard ranking CPU incident with sort-once repair",
+  "mode": "combined",
+  "service": {
+    "application": "leaderboard-rank",
+    "service": "leaderboard-ranking",
+    "deployment": "local",
+    "repository_path": "services/fixtures/leaderboard_rank_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "leaderboard-rank-sort-storm-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a leaderboard ranking CPU/latency incident and remove the redundant per-request re-sorting.",
+    "instructions": "Use the incident clues to localize the ranking hot spot, apply a performance repair, and restore all ranking tests including the sort-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the handler must rank a batch of queries with a single scoreboard sort."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the leaderboard ranking service blew its p99 latency SLO and pinned a CPU core whenever request batches grew. Per-request CPU time scales linearly with the number of players queried in a request.",
+    "error_logs": [
+      "alerts/leaderboard_rank_cpu.log: p99 latency and CPU time on the ranking path scale linearly with the number of queried players",
+      "profile: a single comparison-sort frame dominates request CPU and is entered many times per request"
+    ],
+    "reproduction_steps": [
+      "Inspect the leaderboard ranking fixture and run the unit tests.",
+      "Use the profile clues to localize the hot spot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/leaderboard_rank/",
+      "tests/test_handler.py"
+    ],
+    "notes": "The incident points at redundant work repeated inside the request path, not at the sorting routine itself being slow."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-leaderboard-rank-sort-storm-incident-001",
+    "description": "Synthetic leaderboard ranking CPU/latency incident tied to the leaderboard_rank fixture.",
+    "detection_keywords": [
+      "p99 latency",
+      "CPU time scales with batch size",
+      "linear slowdown"
+    ],
+    "localization_keywords": [
+      "redundant re-computation in the request path",
+      "repeated work per queried item",
+      "sort frame dominates the profile",
+      "leaderboard-ranking"
+    ],
+    "repair_keywords": [
+      "hoist the sort out of the loop",
+      "sort once per request",
+      "compute the ordering a single time",
+      "precompute the ranking before the loop",
+      "reuse the sorted order across items",
+      "eliminate the per-item re-sort",
+      "loop-invariant computation"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "leaderboard-rank-repeated-sort-in-loop-001",
+    "description": "The ranking handler re-sorts the entire scoreboard once per queried player instead of sorting a single time before the loop.",
+    "target_files": [
+      "src/leaderboard_rank/handler.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_handler.LeaderboardRankTests::test_sorts_scoreboard_at_most_once"
+    ],
+    "pass_to_pass": [
+      "test_handler.LeaderboardRankTests::test_returns_one_result_per_query_in_order",
+      "test_handler.LeaderboardRankTests::test_ranks_scores_with_tie_break_and_unknown_fallback"
+    ],
+    "required_tests": [
+      "test_handler.LeaderboardRankTests::test_sorts_scoreboard_at_most_once",
+      "test_handler.LeaderboardRankTests::test_returns_one_result_per_query_in_order",
+      "test_handler.LeaderboardRankTests::test_ranks_scores_with_tie_break_and_unknown_fallback"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that hoists the scoreboard sort out of the per-player loop."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "repeated_sort_in_loop"
+  ],
+  "notes": "Combined leaderboard ranking CPU incident and sort-once repair task.",
+  "gold_patch_path": "patches/leaderboard_rank_sort_once_fix.diff"
+}

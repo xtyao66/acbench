@@ -1,0 +1,114 @@
+{
+ "scenario_id": "real_prometheus_18928",
+ "title": "Range queries over native histograms mis-count samples against MaxSamples, so the per-query sample limit is enforced ...",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "promql",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_prometheus_18928"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "2ad3a8717015",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/18928",
+  "license_note": "Real upstream prometheus PR #18928; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "Range queries over native histograms mis-count samples against MaxSamples, so the per-query sample limit is enforced incorrectly.",
+  "instructions": "Fix the defect in the promql package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestMaxQuerySamples$' ./promql"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "promql.TestMaxQuerySamples"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "promql.TestMaxQuerySamples"
+  ],
+  "forbidden_paths": [
+   "promql/engine_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-18928",
+  "description": "In matrixIterSlice, the histogram sample-size adjustment is computed on the already-resliced (kept) buffer instead of the dropped points, corrupting ev.currentSamples accounting for native histograms.",
+  "target_files": [
+   "promql/engine.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-18928",
+  "description": "Range/subquery evaluations over native histograms report the wrong number of processed samples, causing MaxSamples limit enforcement to be incorrect.",
+  "detection_keywords": [
+   "wrong sample count",
+   "incorrect MaxSamples limit enforcement",
+   "query rejected or accepted at wrong threshold",
+   "native histogram range query miscounts samples",
+   "ev.currentSamples drifts from actual"
+  ],
+  "localization_keywords": [
+   "engine.go",
+   "matrixIterSlice function",
+   "histogram buffer rotation around drop index",
+   "totalHPointSize called on resliced histograms instead of dropped points",
+   "ev.currentSamples subtracts wrong slice",
+   "HPoint sample-size accounting for dropped points before mint",
+   "kept points size used where dropped size needed"
+  ],
+  "repair_keywords": [
+   "compute droppedSize = totalHPointSize(histograms[:drop]) before reslicing",
+   "subtract the dropped points' size from ev.currentSamples",
+   "account for the dropped histogram points, not the retained ones"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Range and subquery evaluations over native histograms enforce the per-query MaxSamples limit incorrectly, accepting or rejecting queries at the wrong sample threshold.",
+  "error_logs": [
+   "query processing would load too many samples into memory in query execution",
+   "promql: expected MaxSamples=91 to be respected, but sample accounting diverged",
+   "currentSamples underflow/drift while evaluating max_over_time over native histograms"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestMaxQuerySamples$' ./promql"
+  ],
+  "relevant_files": [
+   "promql/engine.go",
+   "promql/engine_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

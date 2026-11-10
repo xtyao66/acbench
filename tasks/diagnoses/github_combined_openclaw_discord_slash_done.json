@@ -1,0 +1,38 @@
+{
+  "scenario_id": "github_combined_openclaw_discord_slash_done",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Native Discord slash commands acknowledge the user with a generic completion acknowledgement but never deliver their actual response content, which started after the recent reconcile migration.",
+    "root_cause": "In the interaction dispatch routine of the Discord commands module, incoming native slash interactions are being steered into the branch meant for plugin-style text commands rather than the branch that handles native interactions. Because the plugin path has no real handler for these interactions, it falls back to emitting a generic completion acknowledgement and discards the command's computed output. The mechanism is a misclassification of the interaction's origin at the point where the dispatcher decides which command path to take, so the native command's response payload is never assembled or returned.",
+    "remediation": "Correct the branching logic in the dispatcher so that native slash interactions are recognized as such and routed to the native handling path, allowing each command's real response content to be produced and returned, while leaving the existing text-based plugin command path untouched.",
+    "evidence": [
+      "discord slash command /status resolved with Done. but no status payload",
+      "Native Discord slash commands acknowledge with the completion message but never send their real response content after the reconcile migration",
+      "Slow listener detected: InteractionEventListener took 1026ms for event INTERACTION_CREATE"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Native Discord slash commands acknowledge the user with a generic completion acknowledgement but never deliver their actual response content, which started after the recent reconcile migration.",
+    "root_cause": "The interaction listener is acknowledging the incoming event correctly but the follow-up reply that carries the command's content is timing out before it can be sent. The listener is doing heavy synchronous work while building the response, which pushes the reply past Discord's acknowledgement deadline; once that window closes, only the initial acknowledgement survives and the real payload is dropped. The slow-listener warning indicates the handler is blocking the event loop, so the response content is computed but never reaches the gateway in time.",
+    "remediation": "Defer the interaction acknowledgement immediately and move the response-building work off the blocking path so the follow-up message is sent within the allowed window, for example by acknowledging first and then editing in the real content asynchronously.",
+    "evidence": [
+      "Slow listener detected: InteractionEventListener took 1026ms for event INTERACTION_CREATE",
+      "discord slash command /status resolved with Done. but no status payload"
+    ]
+  },
+  "wrong_rationale": "The slow-listener warning makes a timing/latency explanation very tempting, and a missing follow-up reply is a classic Discord interaction-deadline failure, so an engineer would plausibly rework acknowledgement timing and async handling. It is incorrect because the content is never assembled at all due to wrong path routing in the dispatcher, not lost to a deadline, so fixing timing leaves the misrouting bug intact."
+}

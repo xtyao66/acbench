@@ -1,0 +1,17 @@
+{
+  "name": "volt-vllm-openai-compatible",
+  "code": {
+    "provider": "openai",
+    "model": "<served-model-name>",
+    "api_key_env": "OPENAI_API_KEY",
+    "base_url": "http://<volt-inference-host>:8000/v1",
+    "api": "chat_completions"
+  },
+  "ops": {
+    "provider": "openai",
+    "model": "<served-model-name>",
+    "api_key_env": "OPENAI_API_KEY",
+    "base_url": "http://<volt-inference-host>:8000/v1",
+    "api": "chat_completions"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_14983",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a query runs through a merging querier backed by more than one underlying querier, the race detector reports a data race, and queries occasionally return incorrect results because the matcher data is being concurrently read and written.",
+    "root_cause": "In the storage merge layer, the routine that fans a selection out across the underlying queriers hands every concurrently launched worker the very same matcher collection rather than giving each worker its own private copy. Because at least one underlying querier rewrites the entries of that collection in place while it processes them, the collection is simultaneously read by some workers and written by another. The workers each capture the collection by reference, so there is no isolation between goroutines. This produces an unsynchronized concurrent read-and-write on the shared backing store, which the race detector flags and which can leave another worker observing partially altered matchers, yielding wrong query results.",
+    "remediation": "Ensure each concurrently launched querier worker operates on an independent copy of the matcher collection (or otherwise guarantee the matchers are never mutated in place once shared), so that one worker rewriting its matchers cannot affect the data another worker is reading. The defensive copy or immutability guarantee should live in the merge layer's fan-out path before the workers are started.",
+    "evidence": [
+      "WARNING: DATA RACE",
+      "Read at 0x00c0001a2000 by goroutine 42; Previous write at 0x00c0001a2000 by goroutine 41",
+      "race detected during execution of test TestMergeQuerierConcurrentSelectMatchers"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a query runs through a merging querier backed by more than one underlying querier, the race detector reports a data race, and queries occasionally return incorrect results because the matcher data is being concurrently read and written.",
+    "root_cause": "The block-level querier that runs inside the time-series database engine collects its per-series results into a shared, lazily populated cache that is keyed by matcher and reused across concurrent selections. Because this cache lacks a lock around its lookup-and-insert path, two of the merged queriers running at once can race when they probe and fill the same cache entry. The race detector sees the unsynchronized read and write on this cache slot, and the half-populated entry is what occasionally surfaces as an incorrect query result. The shared matchers merely act as the cache key, so the real hazard is the missing synchronization on the cache itself.",
+    "remediation": "Introduce proper synchronization around the block querier's result cache lookup-and-fill path, for example by guarding the cache with a mutex or switching to a concurrency-safe map, so two concurrent selections cannot read and write the same cache slot at once.",
+    "evidence": [
+      "WARNING: DATA RACE",
+      "Read at 0x00c0001a2000 by goroutine 42; Previous write at 0x00c0001a2000 by goroutine 41",
+      "race detected during execution of test TestMergeQuerierConcurrentSelectMatchers"
+    ]
+  },
+  "wrong_rationale": "It is plausible because the race genuinely surfaces during concurrent selection through the block-level querier and a missing lock on a shared cache is a classic Go data-race pattern, so an engineer would reasonably add synchronization there; it is incorrect because the true hazard is the merge layer sharing one mutable matcher collection across worker goroutines, not any caching layer, so locking a cache would leave the in-place matcher mutation race unfixed."
+}

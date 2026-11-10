@@ -1,0 +1,113 @@
+{
+  "scenario_id": "perf_gojson_345",
+  "title": "go-json: faster string decoding",
+  "mode": "combined",
+  "service": {
+    "application": "go-json",
+    "service": "decoder",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_gojson_345"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/goccy/go-json",
+    "base_commit": "e99e62dcbc4ba2e023c2d4f1dd8b25cd0bf6c383",
+    "pr_url": "https://github.com/goccy/go-json/pull/345",
+    "license_note": "Real upstream goccy/go-json optimization PR #345; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up JSON string decoding so unescaping a string with many escape sequences stops repeatedly re-allocating and shifting the underlying buffer, without changing decoded output.",
+    "instructions": "Optimize the internal/decoder string-unescaping path for speed WITHOUT changing behavior. The benchmark Benchmark306 measures decoding a string with many escapes; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "decode_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": ".",
+      "benchmark": "Benchmark306/go-json",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": false,
+      "gold_speedup": 40.839
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "go-json-345",
+    "description": "unescapeString rewrites the buffer with repeated append/copy and bytes.IndexByte scans per escape, re-shifting the tail on every escape so decoding a string with many escapes is quadratic.",
+    "target_files": [
+      "internal/decoder/string.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "go-json-345",
+    "description": "Decoding JSON strings that contain many escape sequences is slow because unescapeString in internal/decoder/string.go repeatedly appends and copies the buffer tail for each escape instead of unescaping in place.",
+    "detection_keywords": [
+      "slow decoding of escaped strings",
+      "repeated buffer copies while unescaping",
+      "per-escape bytes.IndexByte scan",
+      "tail re-shift on every escape",
+      "quadratic behavior with many escapes"
+    ],
+    "localization_keywords": [
+      "internal/decoder/string.go",
+      "unescapeString function",
+      "append(append(buf[:cursor], ...))",
+      "buf = append(buf[:cursor], buf[cursor+1:]...)",
+      "bytes.IndexByte inside unescape loop"
+    ],
+    "repair_keywords": [
+      "unescape in place with src/dst pointers",
+      "single pass over the buffer",
+      "drop per-escape append/copy",
+      "utf8.EncodeRune for \\u sequences",
+      "remove escaped count argument"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Decoding a JSON string that contains a large number of escape sequences is unexpectedly slow because the unescape step re-shifts the remaining buffer for each escape it processes.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^Benchmark306$/go-json' ./"
+    ],
+    "relevant_files": [
+      "internal/decoder/string.go"
+    ],
+    "notes": "Real upstream optimization PR #345; the slow path is the per-escape append/copy in unescapeString."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "go-json"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

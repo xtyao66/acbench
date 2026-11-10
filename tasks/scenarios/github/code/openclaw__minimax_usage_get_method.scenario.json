@@ -1,0 +1,121 @@
+{
+  "scenario_id": "github_code_openclaw_minimax_usage_get_method",
+  "title": "OpenClaw MiniMax usage tracker should use GET for remains endpoint",
+  "mode": "code_only",
+  "service": {
+    "application": "openclaw",
+    "service": "provider-usage-fetcher",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_minimax_usage_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/63056",
+    "snapshot_key": "openclaw-63056-localized-fixture-v1",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #63056."
+  },
+  "task": {
+    "summary": "Repair the MiniMax usage request so the remains endpoint is called with the correct HTTP method.",
+    "instructions": "Investigate why the usage tracker fails against the coding_plan/remains endpoint, repair the request method, and preserve the existing endpoint and auth header behavior.",
+    "acceptance_notes": "Alternative fixes are allowed as long as the remains endpoint is called correctly without regressing the request shape."
+  },
+  "visible_context": {
+    "issue_text": "The MiniMax usage tracker calls the remains endpoint with POST, but the endpoint only accepts GET and returns 404 for POST.",
+    "error_logs": [
+      "status --usage shows MiniMax error after calling /coding_plan/remains",
+      "curl verification: GET works, POST returns 404"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_minimax_usage/usage.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_minimax_usage/usage.py",
+      "tests/test_usage.py"
+    ],
+    "notes": "This fixture focuses on the request-shape bug around the MiniMax remains endpoint."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-63056-minimax-remains-http-method",
+    "description": "The MiniMax remains endpoint is called with POST even though the API expects GET.",
+    "target_files": [
+      "src/openclaw_minimax_usage/usage.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_usage.MinimaxUsageRequestTests::test_request_uses_get_for_remains_endpoint"
+    ],
+    "pass_to_pass": [
+      "test_usage.MinimaxUsageRequestTests::test_request_targets_the_expected_endpoint",
+      "test_usage.MinimaxUsageRequestTests::test_request_includes_bearer_auth_header"
+    ],
+    "required_tests": [
+      "test_usage.MinimaxUsageRequestTests::test_request_uses_get_for_remains_endpoint",
+      "test_usage.MinimaxUsageRequestTests::test_request_targets_the_expected_endpoint",
+      "test_usage.MinimaxUsageRequestTests::test_request_includes_bearer_auth_header"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "This GitHub-derived reproduction is expected to be repaired in code, not by changing tests."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "http-method",
+      "provider-usage"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "code"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #63056.",
+  "gold_patch_path": "patches/github/openclaw_minimax_usage_get_fix.diff"
+}

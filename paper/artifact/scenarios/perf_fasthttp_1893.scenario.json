@@ -1,0 +1,110 @@
+{
+  "scenario_id": "perf_fasthttp_1893",
+  "title": "perf: improve copyZeroAlloc for os.File and net.TCPConn",
+  "mode": "combined",
+  "service": {
+    "application": "fasthttp",
+    "service": "fasthttp",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_fasthttp_1893"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/valyala/fasthttp",
+    "base_commit": "803c25e54ced13c8a688ce858104e4e4a6b3148c",
+    "pr_url": "https://github.com/valyala/fasthttp/pull/1893",
+    "license_note": "Real upstream fasthttp optimization PR #1893; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up copyZeroAlloc so it avoids the WriterTo/ReaderFrom fallback that silently degrades to io.Copy for os.File and net.TCPConn, restoring sendfile-style zero-copy on the right type pairs without changing behavior.",
+    "instructions": "Optimize copyZeroAlloc in http.go for speed WITHOUT changing behavior. The benchmark BenchmarkCopyZeroAllocOSFileToStringsBuilder measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "http_timing_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": ".",
+      "benchmark": "BenchmarkCopyZeroAllocOSFileToStringsBuilder",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": false,
+      "gold_speedup": 61.101
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "fasthttp-1893",
+    "description": "copyZeroAlloc blindly calls WriteTo/ReadFrom; for os.File and net.TCPConn these fall back to io.Copy when sendfile is impossible, and the generic io.CopyBuffer path re-checks interfaces it already ruled out.",
+    "target_files": [
+      "http.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "fasthttp-1893",
+    "description": "copyZeroAlloc in http.go uses io.WriterTo/io.ReaderFrom unconditionally; for os.File and net.TCPConn the WriterTo fallback calls io.Copy instead of sendfile, and the io.CopyBuffer fallback redundantly re-checks WriterTo/ReaderFrom.",
+    "detection_keywords": [
+      "io.Copy fallback in WriterTo path",
+      "sendfile not triggered between os.File and net.TCPConn",
+      "redundant WriterTo/ReaderFrom checks in io.CopyBuffer",
+      "copyZeroAlloc not zero-copy for file/conn pairs"
+    ],
+    "localization_keywords": [
+      "http.go",
+      "copyZeroAlloc function",
+      "io.WriterTo / io.ReaderFrom type assertions",
+      "io.CopyBuffer with copyBufPool buffer"
+    ],
+    "repair_keywords": [
+      "type switch on *os.File and *net.TCPConn",
+      "use ReadFrom only when sendfile is possible",
+      "prefer WriteTo for *net.TCPConn destination",
+      "custom copyBuffer helper without re-checking interfaces"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "copyZeroAlloc relies on the WriterTo/ReaderFrom interfaces, but os.File and net.TCPConn fall back to a plain io.Copy inside their WriterTo when sendfile is not possible, so the intended zero-copy path is silently lost on certain type pairs.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^BenchmarkCopyZeroAllocOSFileToStringsBuilder$' ./"
+    ],
+    "relevant_files": [
+      "http.go"
+    ],
+    "notes": "Real upstream optimization PR; see https://github.com/valyala/fasthttp/issues/1889."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "fasthttp"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

@@ -1,0 +1,45 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ACBench evidence map" id="acbench-evidence-map">
+    <mxGraphModel dx="760" dy="640" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="380" pageHeight="350" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Evidence map: claims and denominators" style="text;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fontColor=#104D70;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="340" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bench" value="Benchmark&#10;14 scenarios, 6 Go codebases&#10;live GB200 gold speedups" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#6B7280;fontColor=#1a1a1a;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="28" y="48" width="324" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="apply" value="F1/F2 apply and funnel&#10;7 models with matched OFF and ON arms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F0F8;strokeColor=#1A80BB;fontColor=#104D70;fontStyle=1;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="28" y="112" width="324" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="retry" value="Retry-only control&#10;matched scenario subset per model; RC only where run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7E9E9;strokeColor=#A00000;fontColor=#1a1a1a;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="28" y="176" width="324" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="fidelity" value="F3 profile fidelity&#10;12 OFF-fidelity models; paired counts 166 / 164 / 125" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF1F6;strokeColor=#1A80BB;fontColor=#104D70;fontStyle=1;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="28" y="240" width="324" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="audit" value="Artifact and audit&#10;scripts, rows, contamination probe&#10;larger OFF-only models: F3 only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#6B7280;fontColor=#1a1a1a;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="28" y="304" width="324" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#6B7280;" edge="1" parent="1" source="bench" target="apply">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#A00000;" edge="1" parent="1" source="apply" target="retry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#1A80BB;" edge="1" parent="1" source="retry" target="fidelity">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#6B7280;" edge="1" parent="1" source="fidelity" target="audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

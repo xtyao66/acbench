@@ -1,0 +1,17 @@
+model,scenario_id,arm,level,modality,seed,iteration,applied,correct,measured_speedup,perf_score,best_perf_score
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,none,none,,0,1,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,none,none,,0,2,True,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,none,none,,0,3,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,none,none,,0,4,True,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_cpu,func_profile,cpu,0,1,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_cpu,func_profile,cpu,0,2,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_cpu,func_profile,cpu,0,3,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_cpu,func_profile,cpu,0,4,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_line,line_profile,combined,0,1,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_line,line_profile,combined,0,2,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_line,line_profile,combined,0,3,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,prof_line,line_profile,combined,0,4,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,misleading,func_profile,cpu,0,1,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,misleading,func_profile,cpu,0,2,False,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,misleading,func_profile,cpu,0,3,True,False,,0.0,0.0
+nvidia/GLM-5.2-NVFP4,perf_fasthttp_1893,misleading,func_profile,cpu,0,4,False,False,,0.0,0.0

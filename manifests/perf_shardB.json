@@ -1,0 +1,26 @@
+{
+  "name": "perf_shardB",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_fasthttp_1893.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_gojson_345.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_grpc_5654.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_victoriametrics_5721.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_prometheus_17131.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_grpc_6743.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_789.scenario.json"
+    }
+  ]
+}

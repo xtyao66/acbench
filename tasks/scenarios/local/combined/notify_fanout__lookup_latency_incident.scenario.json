@@ -1,0 +1,147 @@
+{
+  "scenario_id": "combined_notify_fanout_lookup_latency",
+  "title": "Notification fan-out latency incident with batched-lookup repair",
+  "mode": "combined",
+  "service": {
+    "application": "notify-fanout",
+    "service": "notification-fanout",
+    "deployment": "local",
+    "repository_path": "services/fixtures/notify_fanout_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "notify-fanout-lookup-latency-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a notification fan-out latency incident and remove the per-request datastore round-trips.",
+    "instructions": "Use the incident clues to localize the latency bottleneck, apply a performance repair, and restore all fan-out tests including the round-trip oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the handler must serve a batch with a single datastore query."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the notification fan-out service blew its p99 latency SLO whenever batch sizes grew. Latency scales linearly with the number of events in a request.",
+    "error_logs": [
+      "alerts/notify_fanout_latency.log: p99 latency on the fan-out path scales linearly with batch size",
+      "traces: each request shows a long sequential fan of profile-store reads, one span per event"
+    ],
+    "reproduction_steps": [
+      "Inspect the fan-out fixture and run the unit tests.",
+      "Use the trace clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/notify_fanout/",
+      "tests/test_handler.py"
+    ],
+    "notes": "The incident points at repeated datastore round-trips inside the request path, not at the datastore itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-notify-fanout-latency-incident-001",
+    "description": "Synthetic notification fan-out latency incident tied to the notify_fanout fixture.",
+    "detection_keywords": [
+      "p99 latency",
+      "latency scales with batch size",
+      "linear slowdown"
+    ],
+    "localization_keywords": [
+      "datastore round-trips",
+      "per-event lookup",
+      "sequential reads in the request path",
+      "notification-fanout"
+    ],
+    "repair_keywords": [
+      "batch the lookups",
+      "single datastore query",
+      "one round-trip per request",
+      "collect ids then resolve once",
+      "eliminate the per-item query loop",
+      "N+1 query",
+      "batched read"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "notify-fanout-n-plus-one-lookups-001",
+    "description": "The fan-out handler issues one datastore lookup per event instead of a single batched read.",
+    "target_files": [
+      "src/notify_fanout/handler.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_handler.NotifyFanoutTests::test_batches_recipient_lookups_into_single_query"
+    ],
+    "pass_to_pass": [
+      "test_handler.NotifyFanoutTests::test_renders_message_per_event_in_order",
+      "test_handler.NotifyFanoutTests::test_resolves_display_names_and_unknown_fallback"
+    ],
+    "required_tests": [
+      "test_handler.NotifyFanoutTests::test_batches_recipient_lookups_into_single_query",
+      "test_handler.NotifyFanoutTests::test_renders_message_per_event_in_order",
+      "test_handler.NotifyFanoutTests::test_resolves_display_names_and_unknown_fallback"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that batches datastore lookups."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "n_plus_one_query"
+  ],
+  "notes": "Combined notification fan-out latency incident and batched-lookup repair task.",
+  "gold_patch_path": "patches/notify_fanout_batch_lookups_fix.diff"
+}

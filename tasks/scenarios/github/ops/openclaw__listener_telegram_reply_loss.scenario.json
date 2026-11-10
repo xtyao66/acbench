@@ -1,0 +1,112 @@
+{
+  "scenario_id": "github_ops_openclaw_listener_telegram_reply_loss",
+  "title": "OpenClaw should not lose Telegram replies when late listener output crashes the gateway",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/61944",
+    "snapshot_key": "openclaw-61944-synthetic-ops-v2",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #61944."
+  },
+  "task": {
+    "summary": "Diagnose why Telegram replies are lost when late listener output crashes the gateway during delivery.",
+    "instructions": "Use the incident evidence to confirm the late-listener crash and delivery loss, localize it to missing active-run guards around listener processing, and propose an ops-level repair plan that preserves delivery.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "Telegram replies disappear because the gateway crashes on a late listener event after the run ends, then delivery recovery fails.",
+    "error_logs": [
+      "Unhandled promise rejection: Error: Agent listener invoked outside active run",
+      "delivery recovery moved the pending message to failed/"
+    ],
+    "reproduction_steps": [
+      "Inspect the delivery-recovery evidence after the gateway crash.",
+      "Explain where the listener lifecycle should stop post-run updates to keep replies deliverable."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models listener-runtime incident triage with Telegram delivery framing."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-61944-telegram-reply-loss-ops",
+    "description": "Synthetic Telegram delivery incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "telegram",
+      "reply lost",
+      "outside active run"
+    ],
+    "localization_keywords": [
+      "listener",
+      "delivery recovery",
+      "active run guard",
+      "late output"
+    ],
+    "repair_keywords": [
+      "skip late events",
+      "guard listener lifecycle",
+      "preserve delivery",
+      "avoid gateway crash"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "telegram",
+      "delivery-recovery"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #61944."
+}

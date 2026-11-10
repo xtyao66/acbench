@@ -1,0 +1,8 @@
+{
+  "name": "perf_120bgap",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/perf/perf_sonic_845.scenario.json"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "scenario_id": "code_only_maintenance_window_overnight_rollover",
+  "title": "Maintenance window overnight rollover repair",
+  "mode": "code_only",
+  "service": {
+    "application": "maintenance-window",
+    "service": "scheduler-window",
+    "deployment": "local",
+    "repository_path": "services/fixtures/maintenance_window_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "maintenance-window-overnight-rollover-v1",
+    "license_note": "ACBench local fixture for scheduling boundary validation."
+  },
+  "task": {
+    "summary": "Repair the maintenance window checker so overnight windows behave correctly.",
+    "instructions": "Investigate why overnight windows are evaluated incorrectly after midnight, fix the window logic, and preserve same-day behavior.",
+    "acceptance_notes": "Any correct behavioral fix is acceptable."
+  },
+  "visible_context": {
+    "issue_text": "Nightly jobs were skipped because a maintenance window that crosses midnight was treated like a same-day interval.",
+    "error_logs": [
+      "scheduler-window: 00:30 incorrectly evaluated as outside the 23:00-02:00 window"
+    ],
+    "reproduction_steps": [
+      "Run the maintenance window tests from the repository root.",
+      "Inspect src/maintenance_window/window.py."
+    ],
+    "relevant_files": [
+      "src/maintenance_window/window.py",
+      "tests/test_window.py"
+    ],
+    "notes": "The start boundary remains inclusive."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "maintenance-window-overnight-rollover-001",
+    "description": "Overnight maintenance windows are evaluated using same-day logic.",
+    "target_files": [
+      "src/maintenance_window/window.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_after_midnight_times",
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_late_evening_times"
+    ],
+    "pass_to_pass": [
+      "test_window.MaintenanceWindowTests::test_same_day_window_excludes_out_of_range_time"
+    ],
+    "required_tests": [
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_after_midnight_times",
+      "test_window.MaintenanceWindowTests::test_overnight_window_includes_late_evening_times",
+      "test_window.MaintenanceWindowTests::test_same_day_window_excludes_out_of_range_time"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "Preserve same-day interval behavior while fixing overnight windows."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "time-logic",
+      "scheduler"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "local",
+    "code",
+    "time-logic"
+  ],
+  "notes": "Local overnight scheduling task.",
+  "gold_patch_path": "patches/maintenance_window_overnight_fix.diff"
+}

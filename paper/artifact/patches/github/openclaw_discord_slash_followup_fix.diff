@@ -1,0 +1,20 @@
+--- a/src/openclaw_discord_commands/commands.py
++++ b/src/openclaw_discord_commands/commands.py
+@@ -31,14 +31,14 @@ def execute_native_command(prompt: str) -> str:
+ def dispatch_discord_command(prompt: str, is_native_interaction: bool) -> str:
+     """Dispatch one Discord command."""
+ 
++    if is_native_interaction and prompt in NATIVE_RESPONSES:
++        return execute_native_command(prompt)
++
+     plugin_match = match_plugin_command(prompt)
+     if plugin_match is not None:
+         plugin_reply = execute_plugin_command(plugin_match)
+         if not plugin_reply["renderable"]:
+             return "Done."
+         return str(plugin_reply["text"])
+-
+-    if is_native_interaction and prompt in NATIVE_RESPONSES:
+-        return execute_native_command(prompt)
+ 
+     return prompt

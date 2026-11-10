@@ -1,0 +1,98 @@
+[
+  {
+    "sid": "perf_compress_499",
+    "stage": "WASHOUT",
+    "speedup": 0.948,
+    "n_subbench": 10
+  },
+  {
+    "sid": "perf_compress_293",
+    "stage": "WASHOUT",
+    "speedup": 1.031,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_fasthttp_1893",
+    "stage": "OK",
+    "speedup": 61.101,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_prometheus_17131",
+    "stage": "OK",
+    "speedup": 1.234,
+    "n_subbench": 5
+  },
+  {
+    "sid": "perf_prometheus_13782",
+    "stage": "WASHOUT",
+    "speedup": 1.0,
+    "n_subbench": 4
+  },
+  {
+    "sid": "perf_victoriametrics_5721",
+    "stage": "OK",
+    "speedup": 1.418,
+    "n_subbench": 4
+  },
+  {
+    "sid": "perf_victoriametrics_10468",
+    "stage": "gold_CORRECT_failed",
+    "speedup": null,
+    "n_subbench": 54
+  },
+  {
+    "sid": "perf_gojson_345",
+    "stage": "OK",
+    "speedup": 40.839,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_sonic_845",
+    "stage": "OK",
+    "speedup": 1177.798,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_sonic_789",
+    "stage": "OK",
+    "speedup": 1.168,
+    "n_subbench": 32
+  },
+  {
+    "sid": "perf_zap_1350",
+    "stage": "WASHOUT",
+    "speedup": 1.127,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_zap_1052",
+    "stage": "gold_CORRECT_failed",
+    "speedup": null,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_badger_1173",
+    "stage": "WASHOUT",
+    "speedup": 0.953,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_badger_1512",
+    "stage": "ERROR: benchmark BenchmarkRandomRead failed (rc=1) in table: able_test.go:875\ntesting.(*B).runN\n\t/usr/local/go/src/testing/benchmark.go:219\ntesting.(*B).run1.func1\n\t/usr/local/go/src/testing/benchmark.go:245",
+    "speedup": null,
+    "n_subbench": 0
+  },
+  {
+    "sid": "perf_grpc_5654",
+    "stage": "OK",
+    "speedup": 2.482,
+    "n_subbench": 1
+  },
+  {
+    "sid": "perf_grpc_6743",
+    "stage": "OK",
+    "speedup": 1.225,
+    "n_subbench": 1
+  }
+]

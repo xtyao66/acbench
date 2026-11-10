@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_18382",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Scraping a protocol-buffer summary metric that carries a count and a sum but no quantile entries crashes the parser with an out-of-range slice access mid-scrape.",
+    "root_cause": "In the protocol-buffer parser of the text-parsing module, the routine that synthesizes the special identifying label for a summary reaches into the metric's list of quantile entries and selects an element by the parser's current field position without first confirming the list actually contains an element at that position. When a summary arrives with an empty quantile list, the position points past the end of an empty sequence, so the lookup reads beyond the available data and the runtime aborts the goroutine. The condition is reachable because advancing the parser to the next token can occur without the preceding setup step that would otherwise have established a valid position, leaving the field position unbounded relative to the absent quantiles.",
+    "remediation": "Before indexing into the summary's quantile sequence by the current field position, detect the empty-or-out-of-bounds case and handle it gracefully (skip the magic-label synthesis or treat the summary as having no quantile element), so an absent quantile list no longer leads to reading past the end of the sequence.",
+    "evidence": [
+      "panic: runtime error: index out of range [0] with length 0",
+      "scrape failed: parser aborted on metric \"no_quantile_summary\"",
+      "TestProtobufParseSummaryNoQuantilesNoPanic"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Scraping a protocol-buffer summary metric that carries a count and a sum but no quantile entries crashes the parser with an out-of-range slice access mid-scrape.",
+    "root_cause": "The protocol-buffer decoding layer mis-handles a summary message in which optional repeated fields are absent. When the wire payload omits the quantile group entirely, the generated accessor for the repeated field is expected to return an empty but non-nil sequence; instead the decoder leaves an internal length counter set from a prior message, so the parser believes one quantile is present while the backing storage holds none. The fault therefore lies in how the message object is reset and reused between successive metric families, not in the label-building logic; stale state from the previously decoded metric makes the count and the actual contents disagree, and the subsequent access overruns the buffer.",
+    "remediation": "Ensure the reusable summary message object is fully cleared between metrics so that an omitted quantile group yields a truly empty sequence with a matching length, and reset any cached per-message counters before decoding each new metric family.",
+    "evidence": [
+      "panic: runtime error: index out of range [0] with length 0",
+      "scrape failed: parser aborted on metric \"no_quantile_summary\"",
+      "runtime panic during scrape"
+    ]
+  },
+  "wrong_rationale": "It is plausible because reused/incompletely-reset decoder objects are a classic source of stale-length-versus-contents mismatches in streaming protobuf parsers, and it matches the same out-of-range symptom. It is wrong because the real fault is an unchecked index into the empty quantile list inside the label-synthesis routine; the length truly is zero, so fixing message-reset behavior would not stop the routine from indexing position-beyond-end."
+}

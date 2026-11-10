@@ -1,0 +1,17 @@
+{
+  "name": "acbench-local-combined-suite",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/local/combined/billing_pricing__checkout_totals_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/feature_router__rollout_guard_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/maintenance_window__midnight_skip_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/notify_fanout__lookup_latency_incident.scenario.json"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "scenario_id": "combined_regex_hoist_redactor_compile_cpu",
+  "title": "Payload-redaction CPU incident with hoisted regex-compile repair",
+  "mode": "combined",
+  "service": {
+    "application": "payload-redactor",
+    "service": "request-redaction",
+    "deployment": "local",
+    "repository_path": "services/fixtures/regex_hoist_redactor_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "regex-hoist-redactor-compile-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a payload-redaction CPU incident and remove the repeated regex-ruleset compilation in the hot path.",
+    "instructions": "Use the incident clues to localize the CPU bottleneck, apply a performance repair, and restore all redaction tests including the compile-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the redactor must process a batch while compiling the redaction ruleset at most once."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the request-redaction path saturated CPU and blew its p99 latency SLO whenever batch sizes grew. CPU time on the redaction path scales linearly with the number of payload records in a request, even though the same records used to be cheap.",
+    "error_logs": [
+      "alerts/redactor_cpu.log: p99 latency on the redaction path scales linearly with the number of records per request",
+      "profile: the hottest frames sit in the regular-expression compiler, entered once for every record processed"
+    ],
+    "reproduction_steps": [
+      "Inspect the payload-redactor fixture and run the unit tests.",
+      "Use the profiler clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/payload_redactor/",
+      "tests/test_redactor.py"
+    ],
+    "notes": "The incident points at repeated work inside the per-record request path, not at the regular-expression engine or the matching itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-payload-redactor-compile-cpu-incident-001",
+    "description": "Synthetic payload-redaction CPU incident tied to the regex_hoist_redactor fixture.",
+    "detection_keywords": [
+      "CPU saturation on the redaction path",
+      "p99 latency scales with the number of records per request",
+      "linear slowdown as batch size grows"
+    ],
+    "localization_keywords": [
+      "regex compiler is the hot frame",
+      "pattern set compiled once per record",
+      "redaction ruleset rebuilt inside the per-record loop",
+      "request-redaction path"
+    ],
+    "repair_keywords": [
+      "hoist the compile out of the loop",
+      "compile the ruleset once",
+      "cache the compiled patterns",
+      "reuse the precompiled matchers",
+      "eliminate the per-record recompilation",
+      "move pattern compilation before the loop",
+      "compile once then reuse"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "payload-redactor-regex-compile-in-loop-001",
+    "description": "The redactor re-compiles the fixed redaction ruleset on every record instead of compiling it once and reusing the matchers.",
+    "target_files": [
+      "src/payload_redactor/redactor.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_redactor.PayloadRedactorTests::test_compiles_ruleset_at_most_once"
+    ],
+    "pass_to_pass": [
+      "test_redactor.PayloadRedactorTests::test_redacts_all_secret_and_pii_kinds",
+      "test_redactor.PayloadRedactorTests::test_preserves_order_count_and_clean_records",
+      "test_redactor.PayloadRedactorTests::test_empty_batch_and_empty_record"
+    ],
+    "required_tests": [
+      "test_redactor.PayloadRedactorTests::test_compiles_ruleset_at_most_once",
+      "test_redactor.PayloadRedactorTests::test_redacts_all_secret_and_pii_kinds",
+      "test_redactor.PayloadRedactorTests::test_preserves_order_count_and_clean_records",
+      "test_redactor.PayloadRedactorTests::test_empty_batch_and_empty_record"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that hoists the regex-ruleset compilation out of the per-record loop."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "regex_hoist"
+  ],
+  "notes": "Combined payload-redaction CPU latency incident and hoisted regex-compile repair task, graded on measured speedup via bench.py.",
+  "gold_patch_path": "patches/regex_hoist_redactor_compile_once_fix.diff"
+}

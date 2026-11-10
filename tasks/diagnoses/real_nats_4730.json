@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_nats_4730",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Expanding a scoped user token whose permission template references a tag that does not exist (when followed by a valid tag) crashes the server with an out-of-range slice access instead of returning an authorization error.",
+    "root_cause": "In the server authentication module's routine that expands user permission templates, the code that combines tag values into all possible combinations can produce an empty result set when a referenced tag has no matching value. The routine then unconditionally reads the first element of that combined value sequence without first checking whether the sequence contains anything. Because a missing tag yields an empty substitution and therefore an empty combined sequence, accessing its first position triggers an index-out-of-range panic, which crashes the goroutine handling authorization rather than failing the template gracefully.",
+    "remediation": "In the permission-template expansion routine, detect the empty combined-value case before indexing into it. When the produced value sequence is empty (the situation that arises when a template references a tag with no matching value), the template should be rejected with an authorization error instead of dereferencing the first element.",
+    "evidence": [
+      "panic: runtime error: index out of range [0] with length 0",
+      "authorization failed: panic recovered while expanding JWT permission template",
+      "Run: go test -run '^TestJwtTemplateGoodTagAfterBadTag$' ./server"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Expanding a scoped user token whose permission template references a tag that does not exist (when followed by a valid tag) crashes the server with an out-of-range slice access instead of returning an authorization error.",
+    "root_cause": "The crash stems from how the template tokenizer in the server authentication module splits a permission template into its component tokens. When a template contains a tag reference that resolves to nothing, the splitting step collapses adjacent separators and drops the resulting empty segment, so the list of parsed tokens ends up shorter than the routine expects. Downstream logic that assumes one parsed token per declared placeholder then walks off the end of the token list, producing the out-of-range access. The defect is in the parsing and tokenization stage, not in the value-combination stage.",
+    "remediation": "Harden the template tokenizer so that empty segments arising from unresolved tag references are preserved rather than discarded, keeping the parsed token count aligned with the number of declared placeholders so downstream iteration never overruns the list.",
+    "evidence": [
+      "panic: runtime error: index out of range [0] with length 0",
+      "authorization failed: panic recovered while expanding JWT permission template",
+      "Run: go test -run '^TestJwtTemplateGoodTagAfterBadTag$' ./server"
+    ]
+  },
+  "wrong_rationale": "It is plausible because an out-of-range access really can come from a token list that is shorter than expected, and an unresolved tag intuitively suggests a missing/dropped segment during parsing. It misleads by pointing at the tokenization/splitting stage, whereas the true fault is the unchecked first-element read on the empty combined value sequence produced by the value-combination step."
+}

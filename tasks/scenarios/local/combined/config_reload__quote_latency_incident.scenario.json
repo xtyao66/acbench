@@ -1,0 +1,147 @@
+{
+  "scenario_id": "combined_config_reload_quote_latency",
+  "title": "Pricing-quote latency incident with load-once config repair",
+  "mode": "combined",
+  "service": {
+    "application": "config-reload",
+    "service": "pricing-quote",
+    "deployment": "local",
+    "repository_path": "services/fixtures/config_reload_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "config-reload-quote-latency-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a pricing-quote latency incident and remove the per-item config file reads.",
+    "instructions": "Use the incident clues to localize the latency bottleneck, apply a performance repair, and restore all pricing-quote tests including the read-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the handler must serve a batch by reading the pricing config at most once."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the pricing-quote service blew its p99 latency SLO whenever quote batches grew. Latency scales linearly with the number of line items in a request.",
+    "error_logs": [
+      "alerts/pricing_quote_latency.log: p99 latency on the quote path scales linearly with batch size",
+      "traces: each request shows a long sequential fan of config-file reads and JSON parses, one span per line item"
+    ],
+    "reproduction_steps": [
+      "Inspect the pricing-quote fixture and run the unit tests.",
+      "Use the trace clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/config_reload/",
+      "tests/test_pricer.py"
+    ],
+    "notes": "The incident points at the same unchanged config being re-read inside the request path, not at the config store itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-config-reload-latency-incident-001",
+    "description": "Synthetic pricing-quote latency incident tied to the config_reload fixture.",
+    "detection_keywords": [
+      "p99 latency",
+      "latency scales with batch size",
+      "linear slowdown"
+    ],
+    "localization_keywords": [
+      "repeated config reads",
+      "per-item file read and parse",
+      "sequential reads in the request path",
+      "pricing-quote"
+    ],
+    "repair_keywords": [
+      "read the config once",
+      "load and parse a single time",
+      "cache the parsed config",
+      "hoist the read out of the loop",
+      "reuse the parsed rules across the batch",
+      "eliminate the per-item read loop",
+      "repeated file read"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "config-reload-repeated-read-per-item-001",
+    "description": "The quote handler reads and parses the pricing config file once per line item instead of loading it a single time and reusing it.",
+    "target_files": [
+      "src/config_reload/pricer.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_pricer.ConfigReloadTests::test_reads_pricing_config_at_most_once"
+    ],
+    "pass_to_pass": [
+      "test_pricer.ConfigReloadTests::test_prices_each_item_in_order",
+      "test_pricer.ConfigReloadTests::test_resolves_unit_prices_and_unknown_fallback"
+    ],
+    "required_tests": [
+      "test_pricer.ConfigReloadTests::test_reads_pricing_config_at_most_once",
+      "test_pricer.ConfigReloadTests::test_prices_each_item_in_order",
+      "test_pricer.ConfigReloadTests::test_resolves_unit_prices_and_unknown_fallback"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that reads the config once and reuses it."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "repeated_io_read"
+  ],
+  "notes": "Combined pricing-quote latency incident and load-once config repair task.",
+  "gold_patch_path": "patches/config_reload_load_once_fix.diff"
+}

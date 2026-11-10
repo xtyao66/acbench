@@ -1,0 +1,147 @@
+{
+  "scenario_id": "combined_dedupe_filter_ingestion_cpu",
+  "title": "Event-ingestion CPU incident with hashed-membership repair",
+  "mode": "combined",
+  "service": {
+    "application": "dedupe-filter",
+    "service": "event-ingestion",
+    "deployment": "local",
+    "repository_path": "services/fixtures/dedupe_filter_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "dedupe-filter-ingestion-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage an event-ingestion CPU incident and remove the quadratic de-duplication scan.",
+    "instructions": "Use the incident clues to localize the super-linear hotspot, apply a performance repair, and restore all ingestion tests including the comparison-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the handler must de-duplicate a batch with a number of membership comparisons that grows linearly with batch size."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the event-ingestion workers saturated CPU and fell behind on the queue whenever batch sizes grew. Processing time grows super-linearly: doubling the batch size roughly quadruples the de-duplication work.",
+    "error_logs": [
+      "alerts/ingestion_cpu.log: worker CPU time per batch grows faster than batch size; doubling the batch ~4x the work",
+      "profile: a single de-duplication step dominates the flame graph, its cost rising with the square of the batch size"
+    ],
+    "reproduction_steps": [
+      "Inspect the ingestion fixture and run the unit tests.",
+      "Use the profile clues to localize the super-linear hotspot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/dedupe_filter/",
+      "tests/test_handler.py"
+    ],
+    "notes": "The incident points at how the worker checks whether an id has already been seen, not at the volume of events itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-dedupe-filter-ingestion-cpu-incident-001",
+    "description": "Synthetic event-ingestion CPU incident tied to the dedupe_filter fixture.",
+    "detection_keywords": [
+      "CPU saturation",
+      "processing time grows super-linearly with batch size",
+      "doubling the batch quadruples the work"
+    ],
+    "localization_keywords": [
+      "quadratic hotspot in the request path",
+      "repeated membership check inside a loop",
+      "cost grows with the square of the input",
+      "event-ingestion"
+    ],
+    "repair_keywords": [
+      "use a hash-based membership test",
+      "replace the linear scan with a set lookup",
+      "make the seen-check O(1)",
+      "deduplicate with a set or dict",
+      "eliminate the per-item linear scan over a growing list",
+      "O(n^2) to O(n)",
+      "constant-time membership"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "dedupe-filter-quadratic-membership-001",
+    "description": "The ingestion handler tests membership with a linear scan over a growing list of seen ids, making de-duplication O(n^2) instead of O(n).",
+    "target_files": [
+      "src/dedupe_filter/handler.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_handler.DedupeFilterTests::test_dedup_membership_scales_linearly"
+    ],
+    "pass_to_pass": [
+      "test_handler.DedupeFilterTests::test_keeps_first_occurrence_in_order",
+      "test_handler.DedupeFilterTests::test_dedup_persists_across_batches"
+    ],
+    "required_tests": [
+      "test_handler.DedupeFilterTests::test_dedup_membership_scales_linearly",
+      "test_handler.DedupeFilterTests::test_keeps_first_occurrence_in_order",
+      "test_handler.DedupeFilterTests::test_dedup_persists_across_batches"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that replaces a quadratic membership scan with a hash-based lookup."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "quadratic_membership"
+  ],
+  "notes": "Combined event-ingestion CPU incident and hashed-membership repair task.",
+  "gold_patch_path": "patches/dedupe_filter_hashed_membership_fix.diff"
+}

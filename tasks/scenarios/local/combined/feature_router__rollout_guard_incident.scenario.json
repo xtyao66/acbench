@@ -1,0 +1,141 @@
+{
+  "scenario_id": "combined_feature_router_rollout_guard",
+  "title": "Rollout guard incident with router repair",
+  "mode": "combined",
+  "service": {
+    "application": "feature-router",
+    "service": "rollout-guard",
+    "deployment": "local",
+    "repository_path": "services/fixtures/feature_router_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "feature-router-rollout-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a rollout safety incident and repair the routing logic.",
+    "instructions": "Use the incident evidence to localize why blocked accounts can still receive the new variant, then patch the router without breaking allowlist behavior.",
+    "acceptance_notes": "Both the ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "The release operations team reports that blocked test accounts entered the new variant during a production rollout drill.",
+    "error_logs": [
+      "incident: blocked-user observed in new variant during 100% rollout simulation",
+      "rollout-guard trace: denylist membership did not stop the new-variant decision path"
+    ],
+    "reproduction_steps": [
+      "Inspect the rollout guard fixture and run its unit tests.",
+      "Use the incident trail to localize the guardrail failure before applying a patch."
+    ],
+    "relevant_files": [
+      "src/feature_router/router.py",
+      "tests/test_router.py"
+    ],
+    "notes": "The issue concerns precedence between guardrail lists and rollout percentage."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-rollout-guard-incident-001",
+    "description": "Synthetic rollout guard incident tied to the feature_router fixture.",
+    "detection_keywords": [
+      "blocked",
+      "new variant",
+      "denylist"
+    ],
+    "localization_keywords": [
+      "denylist",
+      "precedence",
+      "router"
+    ],
+    "repair_keywords": [
+      "denylist precedence",
+      "guardrail",
+      "routing logic"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "feature-router-denylist-precedence-001",
+    "description": "The router applies the denylist too late in the decision flow.",
+    "target_files": [
+      "src/feature_router/router.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_router.FeatureRouterTests::test_denylist_overrides_percent_rollout"
+    ],
+    "pass_to_pass": [
+      "test_router.FeatureRouterTests::test_allowlist_user_gets_new_even_with_zero_rollout",
+      "test_router.FeatureRouterTests::test_regular_user_stays_control_when_rollout_zero"
+    ],
+    "required_tests": [
+      "test_router.FeatureRouterTests::test_denylist_overrides_percent_rollout",
+      "test_router.FeatureRouterTests::test_allowlist_user_gets_new_even_with_zero_rollout",
+      "test_router.FeatureRouterTests::test_regular_user_stays_control_when_rollout_zero"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a routing fix."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "feature-flags",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "feature-flags"
+  ],
+  "notes": "Combined rollout guard incident and repair task.",
+  "gold_patch_path": "patches/feature_router_denylist_fix.diff"
+}

@@ -1,0 +1,117 @@
+{
+  "scenario_id": "perf_prometheus_17131",
+  "title": "[PERF] PromQL: eliminate string-keyed maps in binary vector matching",
+  "mode": "combined",
+  "service": {
+    "application": "prometheus",
+    "service": "promql",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_prometheus_17131"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/prometheus/prometheus",
+    "base_commit": "817dde743c280f3364c5ecb127cf38a26298198c",
+    "pr_url": "https://github.com/prometheus/prometheus/pull/17131",
+    "license_note": "Real upstream prometheus optimization PR #17131; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up PromQL binary vector matching by replacing the per-series string join signatures with integer ordinals, so the hot matching maps stop being keyed on allocated strings.",
+    "instructions": "Optimize the promql package for speed WITHOUT changing behavior. Binary vector matching (and/or/unless and arithmetic vector binops) currently keys its right/left signature maps on string signatures computed per series; intern those signatures to integer ordinals and key the matching maps by int. The benchmark BenchmarkJoinQuery measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./promql"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "promql/bench_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "promql",
+      "benchmark": "BenchmarkJoinQuery",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": true,
+      "gold_speedup": 1.234
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "prometheus-17131",
+    "description": "PromQL binary vector matching keys its rightSigs/matchedSigs maps and per-series EvalSeriesHelper on string join signatures, allocating a string per series and hashing strings on the hot matching path.",
+    "target_files": [
+      "promql/engine.go",
+      "promql/info.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "prometheus-17131",
+    "description": "CPU/alloc profile of vector binary operations shows string-keyed signature maps (rightSigs/matchedSigs) and per-series string signatures dominating rangeEval and VectorBinop in promql/engine.go.",
+    "detection_keywords": [
+      "string-keyed maps in vector matching",
+      "per-series string signature allocation",
+      "map hashing on string join signatures",
+      "slow binary vector matching",
+      "GC pressure in rangeEval/VectorBinop"
+    ],
+    "localization_keywords": [
+      "promql/engine.go",
+      "EvalSeriesHelper.signature",
+      "EvalNodeHelper.rightSigs map[string]",
+      "matchedSigs map[string]",
+      "signatureFunc rangeEval prepSeries"
+    ],
+    "repair_keywords": [
+      "intern signatures to integer ordinals",
+      "EvalSeriesHelper.sigOrdinal int",
+      "rightSigs map[int]Sample",
+      "matchedSigs map[int]map[uint64]struct{}",
+      "signatureToOrdinal lookup table"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Binary vector matching in PromQL (and/or/unless and arithmetic vector binops) computes a string join signature per series and stores matches in string-keyed maps, which is slow and allocation-heavy on queries that join many series.",
+    "error_logs": [
+      "pprof: vector binop matching in promql.(*evaluator).VectorBinop spends time in string-keyed map operations and per-series signature string allocation."
+    ],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^BenchmarkJoinQuery$' ./promql"
+    ],
+    "relevant_files": [
+      "promql/engine.go",
+      "promql/info.go"
+    ],
+    "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "prometheus"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

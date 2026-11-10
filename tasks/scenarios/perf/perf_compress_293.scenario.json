@@ -1,0 +1,119 @@
+{
+ "scenario_id": "perf_compress_293",
+ "title": "inflate: 10-15% faster decompression",
+ "mode": "combined",
+ "service": {
+  "application": "compress",
+  "service": "flate",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_compress_293"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/klauspost/compress",
+  "base_commit": "3d6de88355cc60dc9fe70582315d724ab385f965",
+  "pr_url": "https://github.com/klauspost/compress/pull/293",
+  "license_note": "Real upstream klauspost/compress optimization PR #293; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up DEFLATE decompression in the flate inner loop by removing the per-call moreBits closure, replacing the length-code branch ladder with a lookup table, and inlining huffSym with b/nb kept in local registers, without changing decoded output.",
+  "instructions": "Optimize the flate package decompressor hot loop for speed WITHOUT changing behavior. The benchmark BenchmarkDecodeDigitsDefault1e6 measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./flate"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "flate/reader_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "flate",
+   "benchmark": "BenchmarkDecodeDigitsDefault1e6",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": true,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "compress-293",
+  "description": "The flate decompressor inner loop uses a per-call moreBits closure, a long branch ladder to decode length codes, and a separate huffSym call, leaving f.b/f.nb in struct fields the compiler cannot keep in registers on the hot decode path.",
+  "target_files": [
+   "flate/gen_inflate.go",
+   "flate/inflate.go",
+   "flate/inflate_gen.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "compress-293",
+  "description": "CPU profile of flate decompression shows time spent in the decompressor inner loop: the moreBits closure, the length-code branch ladder, and the huffSym symbol lookup that repeatedly loads/stores f.b and f.nb from struct fields.",
+  "detection_keywords": [
+   "slow ns/op decompressing deflate streams",
+   "decompressor inner loop overhead",
+   "moreBits closure call cost",
+   "branch ladder for length codes",
+   "huffSym symbol decode cost"
+  ],
+  "localization_keywords": [
+   "inflate_gen.go",
+   "gen_inflate.go",
+   "decompressor decode loop",
+   "moreBits closure",
+   "huffSym(f.hd) call"
+  ],
+  "repair_keywords": [
+   "decCodeToLen lookup table for length and extra bits",
+   "inline moreBits ReadByte into the loop",
+   "keep b,nb in local registers",
+   "inline huffSym chunk lookup",
+   "regenerate inflate_gen.go from gen_inflate.go template"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "DEFLATE decompression via the flate package is slower than it needs to be: the decompressor inner loop pays for a per-call moreBits closure, a long switch ladder to compute match lengths, and a separate huffSym call whose f.b/f.nb accesses the compiler keeps in memory instead of registers.",
+  "error_logs": [
+   "pprof: time concentrated in flate.(*decompressor) inner decode loop (moreBits + huffSym + length-code switch) during BenchmarkDecodeDigitsDefault1e6"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkDecodeDigitsDefault1e6$' ./flate"
+  ],
+  "relevant_files": [
+   "flate/gen_inflate.go",
+   "flate/inflate.go",
+   "flate/inflate_gen.go"
+  ],
+  "notes": "Real upstream optimization; profiling diagnosis derived from the PR description. flate/inflate_gen.go is generated from the flate/gen_inflate.go template."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "compress"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

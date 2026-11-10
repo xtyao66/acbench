@@ -1,0 +1,111 @@
+{
+  "scenario_id": "perf_grpc_5654",
+  "title": "grpc: faster decodeGrpcMessage",
+  "mode": "combined",
+  "service": {
+    "application": "grpc-go",
+    "service": "transport",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_grpc_5654"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/grpc/grpc-go",
+    "base_commit": "7da8a056b66bf1ac3486627422aa99c7eb43128b",
+    "pr_url": "https://github.com/grpc/grpc-go/pull/5654",
+    "license_note": "Real upstream grpc-go optimization PR #5654; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up decodeGrpcMessage (and encodeGrpcMessage) in internal/transport/http_util.go so they stop building output through a bytes.Buffer, without changing the decoded/encoded result.",
+    "instructions": "Optimize the internal/transport package for speed WITHOUT changing behavior. The benchmark BenchmarkDecodeGrpcMessage measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 -run 'TestEncodeGrpcMessage|TestDecodeGrpcMessage|TestDecodeEncodeGrpcMessage' ./internal/transport"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "internal/transport/http_util_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "internal/transport",
+      "benchmark": "BenchmarkDecodeGrpcMessage",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": false,
+      "gold_speedup": 2.482
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "grpc-go-5654",
+    "description": "decodeGrpcMessageUnchecked and encodeGrpcMessageUnchecked build their result through a bytes.Buffer (and fmt.Sprintf for percent-escapes) instead of a strings.Builder, on the gRPC status-message decode/encode path.",
+    "target_files": [
+      "internal/transport/http_util.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "grpc-go-5654",
+    "description": "decodeGrpcMessage/encodeGrpcMessage in internal/transport/http_util.go assemble output via a bytes.Buffer plus fmt.Sprintf for each percent-encoded byte, adding allocation and copy overhead on the status-message path.",
+    "detection_keywords": [
+      "bytes.Buffer used for string assembly",
+      "fmt.Sprintf per byte for percent-encoding",
+      "extra allocation building grpc status message",
+      "slow decodeGrpcMessage on hot path"
+    ],
+    "localization_keywords": [
+      "http_util.go",
+      "decodeGrpcMessageUnchecked",
+      "encodeGrpcMessageUnchecked",
+      "var buf bytes.Buffer",
+      "buf.WriteByte / buf.WriteString loop"
+    ],
+    "repair_keywords": [
+      "strings.Builder instead of bytes.Buffer",
+      "sb.WriteByte / sb.String()",
+      "fmt.Fprintf(&sb, ...) for percent-encoding",
+      "drop the bytes import"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Encoding and decoding gRPC status messages allocates and copies more than necessary because the routines build their output through a bytes.Buffer.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^BenchmarkDecodeGrpcMessage$' ./internal/transport"
+    ],
+    "relevant_files": [
+      "internal/transport/http_util.go"
+    ],
+    "notes": "Real upstream optimization PR; no fabricated profile numbers."
+  },
+  "metadata": {
+    "difficulty": "easy",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "grpc-go"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

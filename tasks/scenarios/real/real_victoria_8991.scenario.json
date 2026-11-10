@@ -1,0 +1,114 @@
+{
+ "scenario_id": "real_victoria_8991",
+ "title": "Query.AddTimeFilter produces a time filter that does not match the equivalent parsed query: different String() output...",
+ "mode": "combined",
+ "service": {
+  "application": "victoria",
+  "service": "logstorage",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_victoria_8991"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/VictoriaMetrics/VictoriaMetrics",
+  "base_commit": "3b8f008074d1",
+  "pr_url": "https://github.com/VictoriaMetrics/VictoriaMetrics/pull/8991",
+  "license_note": "Real upstream victoria PR #8991; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "Query.AddTimeFilter produces a time filter that does not match the equivalent parsed query: different String() output and a different max timestamp.",
+  "instructions": "Fix the defect in the logstorage package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestMatchingAddTimeFilter_Parsing$' ./lib/logstorage"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "logstorage.TestMatchingAddTimeFilter_Parsing"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "logstorage.TestMatchingAddTimeFilter_Parsing"
+  ],
+  "forbidden_paths": [
+   "lib/logstorage/parser_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "victoria-8991",
+  "description": "Query.AddTimeFilter sets the filterTime maxTimestamp directly to end and formats stringRepr as \"[start, end]\" with a space, so it does not match the inclusive end-time rounding and spacing applied when parsing the same _time:[start,end] filter from a query string.",
+  "target_files": [
+   "lib/logstorage/parser.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "victoria-8991",
+  "description": "Programmatically adding a global time filter yields a query that is not equivalent to parsing the same _time range, causing inconsistent serialized queries and a wrong effective end timestamp.",
+  "detection_keywords": [
+   "wrong results",
+   "inconsistent query string",
+   "time filter mismatch",
+   "wrong max timestamp",
+   "AddTimeFilter and parsed query differ"
+  ],
+  "localization_keywords": [
+   "parser.go",
+   "Query.AddTimeFilter function",
+   "filterTime maxTimestamp set directly to end",
+   "stringRepr formatted as [start, end] with a space",
+   "missing getMatchingEndTime call on end timestamp",
+   "inclusive bracket end-time rounding not applied",
+   "serialized form must match parsing logic"
+  ],
+  "repair_keywords": [
+   "call getMatchingEndTime(end, endStr) for maxTimestamp",
+   "format stringRepr as [start,end] without the space",
+   "make AddTimeFilter output match parsed _time filter"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Adding a global time filter through Query.AddTimeFilter produces a query that is not equivalent to parsing the same _time:[start,end] range: the serialized query string differs and the effective maximum timestamp is wrong.",
+  "error_logs": [
+   "unexpected result; got _time:[2025-05-20T15:41:00Z,2025-05-20T15:46:00Z] * want _time:[2025-05-20T15:41:00Z, 2025-05-20T15:46:00Z] *",
+   "wrong maxTimestamp; got 1747755960000000000; want 1747755960999999999",
+   "query produced by AddTimeFilter does not match parsed equivalent"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestMatchingAddTimeFilter_Parsing$' ./lib/logstorage"
+  ],
+  "relevant_files": [
+   "lib/logstorage/parser.go",
+   "lib/logstorage/parser_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "victoria"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

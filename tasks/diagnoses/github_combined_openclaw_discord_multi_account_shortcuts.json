@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_discord_multi_account_shortcuts",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "In a multi-account Discord deployment, native slash commands and inline shortcuts respond with only a generic acknowledgement and no real content, while the same commands invoked from the command-line agent path still produce correct output.",
+    "root_cause": "The command dispatch logic in the Discord commands module decides which handler should service an incoming request based on the order in which it checks the possible command sources. Native interactions are evaluated against the general text-command branch before the branch that understands native interactions, so a native request is matched and handled by the path intended for ordinary text commands. That path does not know how to extract or carry the native interaction's real payload, so it produces a bare acknowledgement instead of the command's output. Because the command-line agent route does not pass through this mis-ordered branch, it remains unaffected, which is why only the native Discord path degrades.",
+    "remediation": "Reorder the dispatch so that native interaction requests are recognized and routed to the native-interaction handler before the general text-command branch can claim them, ensuring the native path produces and returns the command's actual content rather than a default acknowledgement.",
+    "evidence": [
+      "InteractionEventListener completes but the slash response contains only Done.",
+      "CLI agent path still returns the correct command output",
+      "Native slash commands return Done with no content and inline shortcuts stop behaving like commands."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "In a multi-account Discord deployment, native slash commands and inline shortcuts respond with only a generic acknowledgement and no real content, while the same commands invoked from the command-line agent path still produce correct output.",
+    "root_cause": "The degradation stems from how the bot selects which account context to use when more than one account is configured. When several accounts are registered, the lookup that maps an incoming native interaction back to the owning account session resolves to the wrong session or to none, so the handler runs against a context that has no command registry attached. With no resolvable command behind the interaction, the listener finishes its lifecycle by emitting a default completion acknowledgement instead of executing anything. The command-line agent path is unaffected because it operates under a single fixed account context and never performs this multi-account session resolution.",
+    "remediation": "Fix the multi-account session resolution so that an incoming native interaction is reliably associated with the correct account context and its command registry, adding a fallback that selects a valid session when the lookup is ambiguous, so the handler executes against a context that actually holds the requested command.",
+    "evidence": [
+      "InteractionEventListener completes but the slash response contains only Done.",
+      "CLI agent path still returns the correct command output",
+      "Native slash commands return Done with no content and inline shortcuts stop behaving like commands."
+    ]
+  },
+  "wrong_rationale": "The multi-account framing in the incident makes an account-context resolution failure look like the natural culprit, and it fits both symptoms (only native path breaks, CLI path is single-context and fine). It is incorrect because the real defect is the order in which command sources are checked during dispatch, not how account sessions are mapped, so fixing session resolution would leave the mis-ordered dispatch branch still hijacking native interactions."
+}

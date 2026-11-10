@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_victoria_10629",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The byte-decoding routine in the encoding package accepts a maliciously crafted length prefix instead of rejecting it, returning a byte slice that extends past the end of the source buffer and triggering out-of-bounds reads or corrupted decoded data.",
+    "root_cause": "In the integer/byte decoding source of the encoding package, the routine that unmarshals a length-prefixed byte sequence performs its sufficiency check by adding the number of header bytes consumed to the decoded payload length and comparing that sum against the remaining input. Because that addition is done in fixed-width unsigned integer arithmetic, a deliberately large decoded length causes the sum to wrap around to a small value. The wrapped sum then appears to fit within the available input, so the guard that should reject an oversized payload passes, and the routine slices out a region larger than what actually remains in the buffer.",
+    "remediation": "Rewrite the sufficiency check so it cannot wrap: validate the decoded payload length against the remaining input without forming a sum that can overflow (for example, compare the payload length directly to the bytes left after the header, rather than adding header size and payload length first). Reject the input with an error when the declared length is larger than what remains.",
+    "evidence": [
+      "TestUnmarshalBytesOverflow",
+      "UnmarshalBytes returned non-empty result for malformed length prefix",
+      "decoded byte slice length exceeds remaining input bytes"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The byte-decoding routine in the encoding package accepts a maliciously crafted length prefix instead of rejecting it, returning a byte slice that extends past the end of the source buffer and triggering out-of-bounds reads or corrupted decoded data.",
+    "root_cause": "The defect lies in the variable-length integer reader that decodes the length prefix itself. That decoder does not cap the number of header bytes it will consume nor flag the continuation-bit pattern as malformed, so a crafted prefix is silently decoded into an enormous magnitude and the count of header bytes it reports is wrong. The downstream byte-extraction code then trusts both the inflated length and the miscounted header offset, which is why an oversized slice is produced. The fault is therefore in the prefix-parsing step mishandling overlong or non-canonical encodings, not in the later length comparison.",
+    "remediation": "Harden the variable-length integer decoder to detect and reject overlong or non-canonical prefixes: bound the number of header bytes it accepts, signal an error when the continuation pattern never terminates within the allowed width, and ensure it reports the correct number of consumed header bytes so downstream code offsets correctly.",
+    "evidence": [
+      "TestUnmarshalBytesOverflow",
+      "UnmarshalBytes returned non-empty result for malformed length prefix",
+      "slice bounds out of range while reading unmarshalled bytes"
+    ]
+  },
+  "wrong_rationale": "It is plausible because a malformed length prefix genuinely originates in the variable-length integer encoding, so blaming the prefix decoder for accepting a poisoned value feels natural and an engineer would harden that decoder. It is incorrect because the prefix is decoded correctly; the real fault is that the subsequent sufficiency check wraps in unsigned arithmetic, so fixing the decoder leaves the overflowing comparison untouched and the bug unresolved."
+}

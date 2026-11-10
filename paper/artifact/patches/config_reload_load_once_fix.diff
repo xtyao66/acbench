@@ -1,0 +1,21 @@
+diff --git a/src/config_reload/pricer.py b/src/config_reload/pricer.py
+index 7a403a8..74ae3fd 100644
+--- a/src/config_reload/pricer.py
++++ b/src/config_reload/pricer.py
+@@ -23,13 +23,12 @@ def price_quotes(
+     """
+ 
+     quotes: list[dict[str, object]] = []
++    # Read and parse the pricing config a single time up front, then reuse the
++    # parsed rules for every line item instead of re-reading the file per item.
++    prices = config.load()
+     for item in line_items:
+         sku = str(item["sku"])
+         quantity = int(item["quantity"])
+-        # Re-read and re-parse the entire pricing config from the backing store
+-        # on every line item: this loop reads the same unchanged file N times
+-        # for a batch of N items.
+-        prices = config.load()
+         unit_price = prices.get(sku, 0.0)
+         quotes.append(
+             {

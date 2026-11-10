@@ -1,0 +1,23 @@
+{
+  "name": "acbench-local-ops-suite",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/local/ops/cache_api__stale_index_alert.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/queue_worker__backlog_spike.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/payments_api__restart_loop_diagnosis.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/auth_service__token_clock_skew.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/api_server__db_connection_pool_exhaustion.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/ops/notifier__dead_letter_queue_overflow.scenario.json"
+    }
+  ]
+}

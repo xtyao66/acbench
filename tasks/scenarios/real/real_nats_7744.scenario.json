@@ -1,0 +1,113 @@
+{
+ "scenario_id": "real_nats_7744",
+ "title": "GenericSublist.HasInterestStartingIn reads the subject tree without holding the read lock, so concurrent Insert/Remov...",
+ "mode": "combined",
+ "service": {
+  "application": "nats",
+  "service": "gsl",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_nats_7744"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/nats-io/nats-server",
+  "base_commit": "7a7ff0dcfaa5",
+  "pr_url": "https://github.com/nats-io/nats-server/pull/7744",
+  "license_note": "Real upstream nats PR #7744; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "GenericSublist.HasInterestStartingIn reads the subject tree without holding the read lock, so concurrent Insert/Remove modifications cause a data race.",
+  "instructions": "Fix the defect in the gsl package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -race -run '^TestGenericSublistHasInterestStartingInRace$' ./server/gsl"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "gsl.TestGenericSublistHasInterestStartingInRace"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "gsl.TestGenericSublistHasInterestStartingInRace"
+  ],
+  "forbidden_paths": [
+   "server/gsl/gsl_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "nats-7744",
+  "description": "HasInterestStartingIn traverses the GenericSublist tree without acquiring the read lock, racing with concurrent Insert/Remove writers.",
+  "target_files": [
+   "server/gsl/gsl.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "nats-7744",
+  "description": "Concurrent subscription interest lookups race with sublist updates, tripping the Go race detector and risking corrupted reads under load.",
+  "detection_keywords": [
+   "data race",
+   "race detector reports concurrent read and write",
+   "WARNING: DATA RACE",
+   "intermittent crash under concurrent load",
+   "non-deterministic interest lookup results"
+  ],
+  "localization_keywords": [
+   "gsl.go",
+   "HasInterestStartingIn method on GenericSublist",
+   "subject tree traversal without read lock",
+   "missing RLock/RUnlock around s.root access",
+   "concurrent Insert and Remove mutate the same sublist",
+   "unsynchronized access to shared sublist root node"
+  ],
+  "repair_keywords": [
+   "acquire read lock with s.RLock and defer s.RUnlock",
+   "guard the tree traversal under the sublist mutex",
+   "make HasInterestStartingIn read-lock the sublist like HasInterest"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Under concurrent subscription checks and sublist updates, the server intermittently trips the race detector and can read inconsistent interest state.",
+  "error_logs": [
+   "WARNING: DATA RACE",
+   "Read at 0x00c000123abc by goroutine 12 in HasInterestStartingIn",
+   "Previous write at 0x00c000123abc by goroutine 8 in Insert"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestGenericSublistHasInterestStartingInRace$' ./server/gsl"
+  ],
+  "relevant_files": [
+   "server/gsl/gsl.go",
+   "server/gsl/gsl_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "nats"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

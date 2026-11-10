@@ -1,0 +1,111 @@
+{
+  "scenario_id": "github_ops_openclaw_docker_healthcheck_false_unhealthy",
+  "title": "OpenClaw Docker health check marks healthy gateway as unhealthy",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "gateway-healthcheck",
+    "deployment": "docker"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62850",
+    "snapshot_key": "openclaw-62850-ops-smoke-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #62850."
+  },
+  "task": {
+    "summary": "Diagnose why the Docker container becomes unhealthy even though /healthz returns HTTP 200.",
+    "instructions": "Use the incident evidence to confirm the false unhealthy state, localize it to the node-based health check command, and submit a repair conclusion through the ops workflow.",
+    "acceptance_notes": "This is an ops-only synthetic incident derived from a real GitHub issue."
+  },
+  "visible_context": {
+    "issue_text": "The official OpenClaw Docker image reports `unhealthy` even while curl to /healthz succeeds from inside the container.",
+    "error_logs": [
+      "docker ps => status=unhealthy",
+      "curl http://127.0.0.1:18789/healthz => HTTP 200 OK",
+      "HEALTHCHECK CMD node -e fetch(...) exits before the request settles"
+    ],
+    "reproduction_steps": [
+      "Inspect the health-check evidence and compare the node-based probe to curl.",
+      "Decide whether the fault has been detected, localized, and repaired."
+    ],
+    "relevant_files": [],
+    "notes": "The expected repair points to the health-check command and startup window, not the gateway server itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62850-docker-healthcheck",
+    "description": "Synthetic incident for a false unhealthy Docker health check derived from a real OpenClaw issue.",
+    "detection_keywords": [
+      "unhealthy",
+      "healthz",
+      "health check"
+    ],
+    "localization_keywords": [
+      "node",
+      "fetch",
+      "healthcheck command"
+    ],
+    "repair_keywords": [
+      "curl",
+      "await fetch",
+      "start-period"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": true
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Ops-only smoke scenario. The standalone executor remains synthetic."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "docker",
+      "healthcheck"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #62850."
+}

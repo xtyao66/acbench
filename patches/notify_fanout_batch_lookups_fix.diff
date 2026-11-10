@@ -1,0 +1,21 @@
+diff --git a/src/notify_fanout/handler.py b/src/notify_fanout/handler.py
+index c637e41..04a94a7 100644
+--- a/src/notify_fanout/handler.py
++++ b/src/notify_fanout/handler.py
+@@ -22,11 +22,13 @@ def build_notifications(
+     """
+ 
+     messages: list[dict[str, str]] = []
++    # Resolve every recipient profile in a single batched round-trip instead of
++    # one datastore lookup per event.
++    recipient_ids = list({event["recipient_id"] for event in events})
++    profiles = store.get_many(recipient_ids)
+     for event in events:
+         recipient_id = event["recipient_id"]
+-        # One datastore round-trip per event: this loop issues N separate
+-        # lookups for a batch of N events.
+-        profile = store.get(recipient_id)
++        profile = profiles.get(recipient_id)
+         display_name = profile["display_name"] if profile else "there"
+         messages.append(
+             {

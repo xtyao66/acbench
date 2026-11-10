@@ -1,0 +1,103 @@
+{
+  "scenario_id": "perf_nats_6908",
+  "title": "Wildcard firstMatching scan materializes every matched subject into a slice and rescans it per message",
+  "mode": "combined",
+  "service": {
+    "application": "nats",
+    "service": "server",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_nats_6908"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/nats-io/nats-server",
+    "base_commit": "24924da7b550ee110b952712f14e7d054ffbd3bc",
+    "pr_url": "https://github.com/nats-io/nats-server/pull/6908",
+    "license_note": "Real upstream nats optimization PR #6908; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up msgBlock.firstMatching for wildcard filters by not materializing a subs []string of every matching subject and not rescanning it for each scanned message.",
+    "instructions": "Optimize the server package for speed WITHOUT changing behavior. The benchmark Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": ["go test -count=1 ./server"],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": ["server/filestore_test.go"],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "server",
+      "benchmark": "Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": true,
+      "gold_speedup": null
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "nats-6908",
+    "description": "firstMatching builds a subs []string of all matched subjects (copying each via string(bsubj)) and loops it per scanned message, costing O(subs) work and allocations on sparse wildcard scans.",
+    "target_files": ["server/filestore.go"]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "nats-6908",
+    "description": "Profiling shows hot path and excessive allocations in msgBlock.firstMatching wildcard branch building and rescanning a per-subject slice.",
+    "detection_keywords": [
+      "high CPU in hot loop",
+      "excessive allocations",
+      "GC pressure",
+      "slow ns/op",
+      "per-message O(subs) rescan"
+    ],
+    "localization_keywords": [
+      "filestore.go",
+      "msgBlock.firstMatching",
+      "firstMatching wildcard branch",
+      "subs []string materialization",
+      "fss.Match callback"
+    ],
+    "repair_keywords": [
+      "drop subs []string materialization",
+      "fold recalc and fseq into fss.Match callback",
+      "min/max fseq computation",
+      "bytesToString zero-copy instead of string(bsubj)",
+      "remove per-message subs scan loop"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Loading the next message for a wildcard filter over a block with very sparse messages is slow and allocation-heavy; the more distinct matching subjects a block tracks, the worse each LoadNextMsg gets.",
+    "error_logs": [
+      "pprof: 71% cum in server.(*msgBlock).firstMatching; alloc_objects dominated by string(bsubj) in fss.Match callback; Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard ~ high ns/op and B/op"
+    ],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard$' ./server"
+    ],
+    "relevant_files": ["server/filestore.go"],
+    "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": ["perf", "real-pr", "nats"],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

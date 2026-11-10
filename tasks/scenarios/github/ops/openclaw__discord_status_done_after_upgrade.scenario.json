@@ -1,0 +1,112 @@
+{
+  "scenario_id": "github_ops_openclaw_discord_status_done_after_upgrade",
+  "title": "OpenClaw /status slash command should not degrade to Done after the Carbon reconcile upgrade",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "discord-slash-status",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.3.22",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/53189",
+    "snapshot_key": "openclaw-53189-synthetic-ops-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #53189."
+  },
+  "task": {
+    "summary": "Diagnose why `/status` returns Done without its status card after the Carbon reconcile upgrade.",
+    "instructions": "Use the post-upgrade evidence to confirm the lost status-card behavior, localize it to the native command dispatch path, and propose an ops-level repair plan that restores the rendered status response.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "After upgrading to v2026.3.22, `/status` in Discord responds with `Done` but no status card.",
+    "error_logs": [
+      "InteractionEventListener took 1026ms for INTERACTION_CREATE",
+      "native slash command executed but returned only Done"
+    ],
+    "reproduction_steps": [
+      "Inspect the slash-command behavior after the Carbon reconcile migration.",
+      "Explain where the response lifecycle stops before the status payload is rendered."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models post-upgrade slash-command diagnostics."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-53189-discord-status-done-after-upgrade",
+    "description": "Synthetic Discord status-card incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "Done",
+      "status card",
+      "upgrade"
+    ],
+    "localization_keywords": [
+      "Carbon reconcile",
+      "status command",
+      "native response path",
+      "interaction lifecycle"
+    ],
+    "repair_keywords": [
+      "restore status card",
+      "native command dispatch",
+      "proper follow-up response",
+      "skip Done fallback"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "discord",
+      "upgrade-regression"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #53189."
+}

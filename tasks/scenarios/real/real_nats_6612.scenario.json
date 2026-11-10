@@ -1,0 +1,115 @@
+{
+ "scenario_id": "real_nats_6612",
+ "title": "Transforming a subject whose wildcard source token is missing panics with an index out of range instead of substituti...",
+ "mode": "combined",
+ "service": {
+  "application": "nats",
+  "service": "server",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_nats_6612"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/nats-io/nats-server",
+  "base_commit": "dd8dbe7d5e89",
+  "pr_url": "https://github.com/nats-io/nats-server/pull/6612",
+  "license_note": "Real upstream nats PR #6612; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "Transforming a subject whose wildcard source token is missing panics with an index out of range instead of substituting an empty token.",
+  "instructions": "Fix the defect in the server package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestSubjectTransformDoesntPanicTransformingMissingToken$' ./server"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "server.TestSubjectTransformDoesntPanicTransformingMissingToken"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "server.TestSubjectTransformDoesntPanicTransformingMissingToken"
+  ],
+  "forbidden_paths": [
+   "server/subject_transform_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "nats-6612",
+  "description": "TransformTokenizedSubject indexes tokens for a Wildcard mapping without bounds checking, so a missing source token causes an index out of range panic.",
+  "target_files": [
+   "server/subject_transform.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "nats-6612",
+  "description": "Applying a subject transform with a wildcard mapping panics the server when an incoming subject is missing the referenced token.",
+  "detection_keywords": [
+   "panic",
+   "index out of range",
+   "runtime error",
+   "server crash on subject transform",
+   "goroutine aborted"
+  ],
+  "localization_keywords": [
+   "subject_transform.go",
+   "TransformTokenizedSubject",
+   "Wildcard case substitution",
+   "dtokmftokindexesargs token index",
+   "tokens slice indexed without bounds check",
+   "missing source token",
+   "len(tokens) shorter than wildcard index"
+  ],
+  "repair_keywords": [
+   "bounds check before indexing tokens",
+   "guard wildcard token index against slice length",
+   "skip writing when token is missing",
+   "substitute empty token instead of panicking"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "When a subject transform uses a wildcard mapping and an incoming subject is shorter than expected, the server panics instead of completing the transform.",
+  "error_logs": [
+   "panic: runtime error: index out of range [1] with length 1",
+   "goroutine running server.(*subjectTransform).TransformTokenizedSubject",
+   "recovered panic while applying subject transform mapping"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestSubjectTransformDoesntPanicTransformingMissingToken$' ./server"
+  ],
+  "relevant_files": [
+   "server/subject_transform.go",
+   "server/subject_transform_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "nats"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

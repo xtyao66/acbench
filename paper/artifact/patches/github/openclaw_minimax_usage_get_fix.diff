@@ -1,0 +1,13 @@
+--- a/src/openclaw_minimax_usage/usage.py
++++ b/src/openclaw_minimax_usage/usage.py
+@@
+ def build_minimax_usage_request(api_key: str) -> dict[str, object]:
+     """Build the request OpenClaw would send to the MiniMax usage endpoint."""
+ 
+     return {
+-        "method": "POST",
++        "method": "GET",
+         "url": "https://api.minimax.io/v1/api/openplatform/coding_plan/remains",
+         "headers": {
+             "Authorization": f"Bearer {api_key}",
+             "Content-Type": "application/json",

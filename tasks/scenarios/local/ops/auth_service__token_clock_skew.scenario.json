@@ -1,0 +1,103 @@
+{
+  "scenario_id": "ops_only_auth_service_token_clock_skew",
+  "title": "Auth service rejecting valid JWTs due to clock skew between issuer and validator",
+  "mode": "ops_only",
+  "service": {
+    "application": "auth-service",
+    "service": "token-validator",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "auth-service-clock-skew-v1",
+    "license_note": "ACBench synthetic local ops fixture."
+  },
+  "task": {
+    "summary": "Detect, localize, and propose a repair for valid JWTs being rejected with token not yet valid errors after a service node restart.",
+    "instructions": "Use the incident evidence to confirm the fault is clock skew between the token issuer and validator, localize it to the NTP desync on the validator node, and submit a repair conclusion through the ops workflow.",
+    "acceptance_notes": "This local ops task is synthetic but uses realistic incident framing."
+  },
+  "visible_context": {
+    "issue_text": "After a rolling restart of the auth-validator nodes, a subset of API requests fail with 401 errors. The tokens are freshly issued and not expired. The error message indicates the token is not yet valid.",
+    "error_logs": [
+      "token-validator: JWT validation failed — error=token is not valid yet (nbf=1745110200, now=1745110183)",
+      "token-validator: node-2 system clock: 2026-04-19T19:49:43Z",
+      "token-issuer: issued_at=2026-04-19T19:50:00Z",
+      "ntpd: node-2 last sync=47 minutes ago, offset=-18.2s"
+    ],
+    "reproduction_steps": [
+      "Compare the issuer timestamp against the validator node clock.",
+      "Inspect NTP sync status on the validator node.",
+      "Decide whether the fault has been detected, localized, and repaired."
+    ],
+    "relevant_files": [],
+    "notes": "The expected repair forces NTP resync on the affected node and adds a configurable clock skew tolerance (leeway) to the JWT validation logic."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-auth-service-clock-skew-001",
+    "description": "Synthetic incident where NTP desync on a validator node causes valid JWTs to be rejected as not yet valid.",
+    "detection_keywords": [
+      "not valid yet",
+      "401",
+      "nbf"
+    ],
+    "localization_keywords": [
+      "clock skew",
+      "NTP",
+      "offset"
+    ],
+    "repair_keywords": [
+      "ntpd",
+      "leeway",
+      "clock sync"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "auth",
+      "jwt",
+      "clock-skew"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": ["TTD", "TTL", "TTM"],
+  "tags": ["local", "ops", "auth"],
+  "notes": "Synthetic local JWT clock skew ops task."
+}

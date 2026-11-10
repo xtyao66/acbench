@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_completion_process_leak",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Finished completion worker processes accumulate as orphans after their sessions end, driving the gateway's memory usage upward and slowing message handling over long uptime.",
+    "root_cause": "In the completion runtime module, the path that tears down a session does not also remove or terminate the bookkeeping records for the completion workers that were spawned under that session. When a session reaches its end, the worker that produced its completion has already finished its work, but the routine responsible for ending the session never reaches in to retire those finished worker entries. As a result, each ended session leaves behind a lingering worker record that is never reclaimed, and these stale entries pile up steadily as new sessions come and go, manifesting as orphaned completion processes and growing memory consumption.",
+    "remediation": "Extend the session-teardown path so that, when a session ends, it also enumerates and removes or terminates the finished completion worker records associated with that session, ensuring no worker bookkeeping survives the session that owned it while leaving the already-healthy cleanup behaviors intact.",
+    "evidence": [
+      "45 orphan openclaw-completion processes observed after 48 hours of uptime",
+      "gateway memory usage peaked at 24.8GB",
+      "Slow listener detected: DiscordMessageListener took 311.2 seconds"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Finished completion worker processes accumulate as orphans after their sessions end, driving the gateway's memory usage upward and slowing message handling over long uptime.",
+    "root_cause": "The worker processes themselves never exit cleanly: the code each completion worker runs to finish its job leaves the underlying child process alive instead of letting it return and be reaped. Because the worker's own exit handling fails to release its process handle, the operating system keeps the finished process around in a defunct-but-resident state, and the parent never collects it. Over many completions these unreaped child processes pile up, which is why orphaned completion processes are observed and why memory climbs while the message listener stalls behind the backlog of stuck workers.",
+    "remediation": "Fix the worker's exit routine so that each completion process explicitly closes its handle and returns control once its work is done, and add a periodic reaper in the parent that collects finished child processes so they cannot linger in a defunct state.",
+    "evidence": [
+      "45 orphan openclaw-completion processes observed after 48 hours of uptime",
+      "gateway memory usage peaked at 24.8GB",
+      "Slow listener detected: DiscordMessageListener took 311.2 seconds"
+    ]
+  },
+  "wrong_rationale": "It is plausible because orphaned processes and rising memory genuinely look like workers that fail to exit and get reaped, so an engineer would naturally inspect the worker's own shutdown code; it is incorrect because the true defect is that the session-ending path never removes the already-finished worker records, not that the workers themselves fail to terminate, so fixing worker exit handling addresses the wrong location and leaves the leak in place."
+}

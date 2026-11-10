@@ -1,0 +1,37 @@
+{
+  "scenario_id": "github_combined_openclaw_no_reply_prefix_leak",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a provider emits the silent-reply sentinel immediately followed by leaked reasoning text, the system forwards the entire blob to the user instead of suppressing it, producing user-facing messages full of the sentinel token plus trailing content.",
+    "root_cause": "The silent-reply detection logic in the token-handling module treats a message as a silent reply only when the message equals the sentinel exactly. Because the check is an exact equality comparison rather than a prefix-based one, any output where the sentinel is the leading marker but is followed by additional characters fails the test and is classified as ordinary visible text. As a result, leaked trailing content attached to the sentinel slips past the suppression path and is delivered downstream.",
+    "remediation": "Broaden the silent-reply detection so it recognizes the case where the message begins with the sentinel even when extra text trails it, suppressing such output rather than delivering it, while still preserving correct handling of an exact-only sentinel and of genuine visible text.",
+    "evidence": [
+      "telegram delivery emitted 7 raw messages containing repeated NO_REPLY tokens",
+      "stopReason=length while leaked NO_REPLY-prefixed output kept streaming"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a provider emits the silent-reply sentinel immediately followed by leaked reasoning text, the system forwards the entire blob to the user instead of suppressing it, producing user-facing messages full of the sentinel token plus trailing content.",
+    "root_cause": "The defect lives in the streaming delivery layer rather than the detection logic. The model output is broken into chunks and flushed incrementally, so the suppression decision is made per chunk before the full response has accumulated. When generation halts early because the length budget is exhausted, partial chunks that begin with the sentinel are emitted before the detector ever sees the complete message, so the multiple raw messages observed are an artifact of premature flushing during streaming.",
+    "remediation": "Buffer the full provider response before evaluating it against the silent-reply rule, and avoid emitting any partial chunks downstream until the stream has fully terminated, so suppression can be decided against the complete message rather than mid-stream fragments.",
+    "evidence": [
+      "telegram delivery emitted 7 raw messages containing repeated NO_REPLY tokens",
+      "stopReason=length while leaked NO_REPLY-prefixed output kept streaming"
+    ]
+  },
+  "wrong_rationale": "The streaming/buffering theory is plausible because the logs show multiple raw messages and an early length-based stop, which superficially look like premature flushing of partial stream chunks. It is incorrect because the actual defect is the exact-match detection comparison in the token module; buffering the full response would still fail to suppress a message that leads with the sentinel but carries trailing text, so the engineer would fix the wrong subsystem."
+}

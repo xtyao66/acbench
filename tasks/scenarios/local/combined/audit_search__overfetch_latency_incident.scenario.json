@@ -1,0 +1,147 @@
+{
+  "scenario_id": "combined_audit_search_overfetch_latency",
+  "title": "Audit-search over-fetch latency incident with predicate-pushdown repair",
+  "mode": "combined",
+  "service": {
+    "application": "audit-search",
+    "service": "audit-log-search",
+    "deployment": "local",
+    "repository_path": "services/fixtures/audit_search_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "audit-search-overfetch-latency-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage an audit-log search latency incident and stop the handler from reading the whole table for a narrow query.",
+    "instructions": "Use the incident clues to localize the over-fetch bottleneck, apply a performance repair, and restore all audit-search tests including the rows-scanned oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the handler must return no more rows from the store than actually match the scoped query."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the audit-log search endpoint blew its query-latency SLO and saturated store read I/O. Latency and rows read scale with total table size, not with how many events a tenant query actually matches.",
+    "error_logs": [
+      "alerts/audit_search_latency.log: query latency and store read bytes scale with table size, not with result size",
+      "metrics: rows_read per request stays huge even when the response returns only a handful of events"
+    ],
+    "reproduction_steps": [
+      "Inspect the audit-search fixture and run the unit tests.",
+      "Use the metrics clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/audit_search/",
+      "tests/test_search.py"
+    ],
+    "notes": "The incident points at the request path reading far more rows than it returns, not at the store being slow per row."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-audit-search-overfetch-incident-001",
+    "description": "Synthetic audit-log search over-fetch latency incident tied to the audit_search fixture.",
+    "detection_keywords": [
+      "query latency SLO breach",
+      "rows read scale with table size",
+      "store read I/O saturation"
+    ],
+    "localization_keywords": [
+      "reads far more rows than it returns",
+      "full-table scan in the request path",
+      "filtering in application code after fetching everything",
+      "audit-log-search"
+    ],
+    "repair_keywords": [
+      "push the predicate into the query",
+      "filter at the data source",
+      "select only matching rows",
+      "stop fetching the whole table",
+      "scan only what matches the query",
+      "eliminate the over-fetch",
+      "server-side filtering"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "audit-search-eager-overfetch-001",
+    "description": "The audit-search handler fetches every row in the table and filters in Python instead of pushing the tenant + severity predicate into the store query.",
+    "target_files": [
+      "src/audit_search/search.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_search.AuditSearchTests::test_pushes_predicate_into_store_query"
+    ],
+    "pass_to_pass": [
+      "test_search.AuditSearchTests::test_returns_matching_events_newest_first",
+      "test_search.AuditSearchTests::test_excludes_other_tenants_and_below_threshold"
+    ],
+    "required_tests": [
+      "test_search.AuditSearchTests::test_pushes_predicate_into_store_query",
+      "test_search.AuditSearchTests::test_returns_matching_events_newest_first",
+      "test_search.AuditSearchTests::test_excludes_other_tenants_and_below_threshold"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that pushes the query predicate into the data source instead of over-fetching."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "eager_overfetch"
+  ],
+  "notes": "Combined audit-log search over-fetch latency incident and predicate-pushdown repair task.",
+  "gold_patch_path": "patches/audit_search_predicate_pushdown_fix.diff"
+}

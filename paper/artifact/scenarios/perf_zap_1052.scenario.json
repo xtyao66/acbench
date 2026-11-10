@@ -1,0 +1,116 @@
+{
+ "scenario_id": "perf_zap_1052",
+ "title": "zap: faster caller + stacktrace capture",
+ "mode": "combined",
+ "service": {
+  "application": "zap",
+  "service": "zap",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_zap_1052"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/uber-go/zap",
+  "base_commit": "3f20106b7d58ac39493a3f02378ff13446373773",
+  "pr_url": "https://github.com/uber-go/zap/pull/1052",
+  "license_note": "Real upstream uber-go/zap optimization PR #1052; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up caller and stacktrace capture so that when both AddCaller and AddStacktrace are enabled, the call stack is captured once and shared instead of being walked twice, without changing logged output.",
+  "instructions": "Optimize the root zap package for speed WITHOUT changing behavior. When a log entry needs both the caller frame and a stack trace, the stack should be captured a single time and reused. The benchmark BenchmarkAddCallerAndStacktrace measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "logger_bench_test.go",
+   "stacktrace_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": ".",
+   "benchmark": "BenchmarkAddCallerAndStacktrace",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "zap-1052",
+  "description": "When both AddCaller and AddStacktrace are enabled, Logger.check captures the call stack twice (once for the caller frame via getCallerFrame and again for the stack trace), walking runtime frames redundantly on a hot logging path.",
+  "target_files": [
+   "logger.go",
+   "stacktrace.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "zap-1052",
+  "description": "Logging with AddCaller and AddStacktrace both enabled walks the runtime call stack twice per entry: once in getCallerFrame for the caller and once in takeStacktrace for the trace, duplicating runtime.Callers/CallersFrames work in logger.go and stacktrace.go.",
+  "detection_keywords": [
+   "redundant stack walks per log entry",
+   "runtime.Callers called twice",
+   "caller and stacktrace captured separately",
+   "duplicate frame iteration on hot path",
+   "slow ns/op with AddCaller and AddStacktrace"
+  ],
+  "localization_keywords": [
+   "logger.go Logger.check",
+   "getCallerFrame in logger.go",
+   "takeStacktrace in stacktrace.go",
+   "runtime.CallersFrames",
+   "StackSkip caller skip offset"
+  ],
+  "repair_keywords": [
+   "capture stack once and share",
+   "captureStacktrace with depth",
+   "stacktraceFirst vs stacktraceFull",
+   "pool a reusable stacktrace struct",
+   "stackFormatter to format frames"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "When a logger has both AddCaller and AddStacktrace enabled, each log entry that triggers a stack trace walks the runtime call stack twice: once to find the caller frame and once to build the stack trace. This shows up in profiles of caller+stacktrace logging.",
+  "error_logs": [],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkAddCallerAndStacktrace$' ./"
+  ],
+  "relevant_files": [
+   "logger.go",
+   "stacktrace.go"
+  ],
+  "notes": "Real upstream optimization PR; the call stack is captured once and shared between caller and stacktrace."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "zap"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

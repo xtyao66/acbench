@@ -1,0 +1,41 @@
+{
+  "scenario_id": "github_combined_openclaw_status_deep_false_invalid_config",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism. [re-authored to remove a leaked fix string literal]",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The deep status view labels a healthy memory plugin as having an invalid configuration even though the same plugin is registered, loaded, and reporting its vector and full-text indexes as ready.",
+    "root_cause": "When the deep status path resolves the memory search configuration for a plugin, the secondary resolution branch it takes does not carry the plugin's already-known configuration context forward. Instead of reusing the live configuration that the registered, loaded plugin is operating with, this branch reconstructs a bare configuration object that is missing required fields. The status layer then validates that stripped-down object against the schema, the required embedding section is absent, and validation fails. So the diagnostic is produced not because the plugin's real configuration is wrong, but because the resolution step handed the validator an impoverished copy. Compounding this, the rendering step treats absent metric counts as something to display as literal placeholder text rather than recognizing that ready indexes imply a healthy plugin, which reinforces the misleading impression in the rendered output.",
+    "remediation": "Make the secondary configuration-resolution branch preserve and pass through the plugin's actual loaded configuration context so the validator sees the complete, real settings rather than a hollow reconstruction. Then adjust the status rendering so that, when index readiness is reported and counts are simply unavailable, the view does not surface those gaps as alarming placeholders and does not escalate a healthy, ready plugin into an invalid-config diagnostic.",
+    "evidence": [
+      "status --deep emits an invalid-config diagnostic for the memory plugin while the same plugin is simultaneously reported as registered, loaded, and with vector and full-text indexes ready, an internal contradiction that points at the status/config path rather than the plugin itself.",
+      "The validation complaint specifically names a missing required embedding section, indicating the object handed to the validator lacked fields the live plugin clearly possesses.",
+      "The investigation notes point at the configuration-resolution helper and at status rendering, and describe resolution dropping configuration context while rendering shows missing counts as visible placeholders.",
+      "The fixture is described as modeling the status and config path behind the false diagnostic, not the plugin runtime, so the defect lives in how status resolves and renders configuration, not in the plugin's stored settings."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The deep status view labels a healthy memory plugin as having an invalid configuration even though the same plugin is registered, loaded, and reporting its vector and full-text indexes as ready.",
+    "root_cause": "The deep status path runs schema validation against an outdated or mismatched schema version. The plugin was upgraded to a newer configuration shape in which the embedding settings were relocated or made optional, but the validator the status command loads still enforces the older contract that demands a top-level embedding section as a required property. Because the running plugin satisfies the current schema while the status command checks against the stale one, every healthy plugin of this newer kind trips the same required-property complaint. The contradiction between the ready indexes and the invalid-config label is therefore a schema-drift problem: the runtime and the diagnostic are evaluating against two different definitions of what a valid configuration looks like.",
+    "remediation": "Align the schema that the deep status command validates against with the schema the plugin runtime actually uses, so both sides agree on which sections are required. Version the configuration contract and have the status path select the matching schema for the plugin's declared version rather than unconditionally enforcing the legacy required-property set.",
+    "evidence": [
+      "The validation error complains about a missing required embedding property, which is consistent with a schema that still treats that section as mandatory after the plugin moved on to a newer shape.",
+      "The plugin is registered, loaded, and reports its indexes as ready, showing the runtime accepts the configuration even though the status validator rejects it, which fits two divergent schema definitions.",
+      "The incident is confined to one specific named plugin variant, suggesting that variant carries a newer configuration contract the status validator has not caught up with.",
+      "The deep status mode is where validation is exercised, so a stale validation contract in that path would surface only there while normal operation stays healthy."
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because the error message genuinely complains about a missing required embedding property and the plugin is healthy at runtime, which superficially fits a schema-version-drift story. It is incorrect because the real defect is that the configuration-resolution step's secondary branch hands the validator a hollow reconstructed configuration that drops the live plugin's real settings (plus rendering surfacing missing counts as placeholders); the schema itself is correct and shared. It is not trivially refuted because nothing in the observable material directly shows that both sides use the same schema, so a reader cannot immediately rule out schema drift without inspecting the resolution helper."
+}

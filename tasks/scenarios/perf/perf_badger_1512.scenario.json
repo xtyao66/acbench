@@ -1,0 +1,113 @@
+{
+ "scenario_id": "perf_badger_1512",
+ "title": "badger/table: remove redundant block decode in iterator",
+ "mode": "combined",
+ "service": {
+  "application": "badger",
+  "service": "table",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_badger_1512"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/dgraph-io/badger",
+  "base_commit": "ab4352b00a17a31faf3fbf8d5843caf03e259d23",
+  "pr_url": "https://github.com/dgraph-io/badger/pull/1512",
+  "license_note": "Real upstream badger optimization PR #1512 (module v2); measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up table iteration by removing a redundant block decode/seek performed eagerly when a new Table iterator is constructed, without changing behavior.",
+  "instructions": "Optimize the table package for speed WITHOUT changing behavior. The benchmark BenchmarkRandomRead measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./table"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "table/table_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "table",
+   "benchmark": "BenchmarkRandomRead",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": true,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "badger-1512",
+  "description": "Table.NewIterator eagerly calls ti.next() during construction, decoding/seeking the first block before the caller has positioned the iterator, doing redundant work on every iterator created.",
+  "target_files": [
+   "table/iterator.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "badger-1512",
+  "description": "Constructing a table iterator eagerly advances to and decodes the first block via ti.next() in NewIterator, repeating work that the subsequent Seek/Rewind redoes on the hot read path in table/iterator.go.",
+  "detection_keywords": [
+   "redundant block decode on iterator creation",
+   "eager next() in NewIterator",
+   "wasted work per table iterator",
+   "block decoded before seek positions it",
+   "slow ns/op on random table reads"
+  ],
+  "localization_keywords": [
+   "table/iterator.go",
+   "Table.NewIterator",
+   "ti.next() call in constructor",
+   "Iterator setup before Seek",
+   "NewIterator returns ti"
+  ],
+  "repair_keywords": [
+   "remove ti.next() from NewIterator",
+   "defer first block decode to Seek/Rewind",
+   "construct iterator without advancing",
+   "avoid eager decode in constructor",
+   "let caller position the iterator"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Random reads through table iterators are slower than expected; every NewIterator call eagerly decodes the first block even though the caller seeks afterward, redoing the same decode work.",
+  "error_logs": [],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkRandomRead$' ./table"
+  ],
+  "relevant_files": [
+   "table/iterator.go"
+  ],
+  "notes": "Real upstream optimization PR; the redundant eager decode removed from the constructor is the optimization under test."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "badger"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

@@ -1,0 +1,148 @@
+{
+  "scenario_id": "combined_regex_recompile_scrub_latency",
+  "title": "Log-scrubber CPU latency incident with hoisted regex-compile repair",
+  "mode": "combined",
+  "service": {
+    "application": "log-scrubber",
+    "service": "log-scrubber",
+    "deployment": "local",
+    "repository_path": "services/fixtures/regex_recompile_in_loop_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "regex-recompile-scrub-latency-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a log-scrubbing CPU latency incident and remove the repeated regex compilation in the hot path.",
+    "instructions": "Use the incident clues to localize the CPU bottleneck, apply a performance repair, and restore all scrubber tests including the compile-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the scrubber must process a batch while compiling the redaction pattern at most once."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the log-scrubbing path blew its p99 latency SLO whenever batch sizes grew. CPU time on the scrub path scales linearly with the number of log lines in a request.",
+    "error_logs": [
+      "alerts/log_scrubber_latency.log: p99 latency on the scrub path scales linearly with batch size",
+      "profiler: the hottest frame is the regex compiler, invoked once for every line processed"
+    ],
+    "reproduction_steps": [
+      "Inspect the log-scrubber fixture and run the unit tests.",
+      "Use the profiler clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/log_scrubber/",
+      "tests/test_scrubber.py"
+    ],
+    "notes": "The incident points at repeated work inside the per-line request path, not at the regex engine itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-log-scrubber-latency-incident-001",
+    "description": "Synthetic log-scrubbing CPU latency incident tied to the regex_recompile_in_loop fixture.",
+    "detection_keywords": [
+      "p99 latency",
+      "latency scales with batch size",
+      "linear slowdown",
+      "high CPU on the scrub path"
+    ],
+    "localization_keywords": [
+      "regex compiler is the hot frame",
+      "pattern compiled once per item",
+      "repeated work inside the per-line loop",
+      "log-scrubber"
+    ],
+    "repair_keywords": [
+      "hoist the compile out of the loop",
+      "compile the pattern once",
+      "cache the compiled pattern",
+      "reuse the precompiled regex",
+      "eliminate the per-item recompilation",
+      "move pattern compilation before the loop",
+      "compile once then reuse"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "log-scrubber-regex-recompile-in-loop-001",
+    "description": "The scrubber re-compiles the fixed redaction regex on every line instead of compiling it once and reusing it.",
+    "target_files": [
+      "src/log_scrubber/scrubber.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_scrubber.LogScrubberTests::test_compiles_redaction_pattern_at_most_once"
+    ],
+    "pass_to_pass": [
+      "test_scrubber.LogScrubberTests::test_redacts_secret_values_and_preserves_keys",
+      "test_scrubber.LogScrubberTests::test_passes_through_lines_without_secrets_in_order"
+    ],
+    "required_tests": [
+      "test_scrubber.LogScrubberTests::test_compiles_redaction_pattern_at_most_once",
+      "test_scrubber.LogScrubberTests::test_redacts_secret_values_and_preserves_keys",
+      "test_scrubber.LogScrubberTests::test_passes_through_lines_without_secrets_in_order"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that hoists the regex compilation out of the per-line loop."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "regex_recompile_in_loop"
+  ],
+  "notes": "Combined log-scrubber CPU latency incident and hoisted regex-compile repair task.",
+  "gold_patch_path": "patches/regex_recompile_hoist_fix.diff"
+}

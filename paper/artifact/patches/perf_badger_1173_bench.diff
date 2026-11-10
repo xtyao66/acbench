@@ -1,0 +1,21 @@
+diff --git a/skl/skl_test.go b/skl/skl_test.go
+index 6bd075862..0be7a64e4 100644
+--- a/skl/skl_test.go
++++ b/skl/skl_test.go
+@@ -516,3 +516,16 @@ func BenchmarkReadWriteMap(b *testing.B) {
+ 		})
+ 	}
+ }
++
++func BenchmarkWrite(b *testing.B) {
++	value := newValue(123)
++	l := NewSkiplist(int64((b.N + 1) * MaxNodeSize))
++	defer l.DecrRef()
++	b.ResetTimer()
++	b.RunParallel(func(pb *testing.PB) {
++		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
++		for pb.Next() {
++			l.Put(randomKey(rng), y.ValueStruct{Value: value, Meta: 0, UserMeta: 0})
++		}
++	})
++}

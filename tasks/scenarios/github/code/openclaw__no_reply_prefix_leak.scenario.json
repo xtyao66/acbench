@@ -1,0 +1,121 @@
+{
+  "scenario_id": "github_code_openclaw_no_reply_prefix_leak",
+  "title": "OpenClaw should suppress NO_REPLY output even when trailing text leaks",
+  "mode": "code_only",
+  "service": {
+    "application": "openclaw",
+    "service": "silent-reply-delivery",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_no_reply_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.8",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/63054",
+    "snapshot_key": "openclaw-63054-localized-fixture-v1",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #63054."
+  },
+  "task": {
+    "summary": "Repair silent-reply detection so NO_REPLY-prefixed output is suppressed even when leaked trailing text follows it.",
+    "instructions": "Investigate why NO_REPLY plus trailing leaked reasoning is still delivered to users, repair the silent-reply detection path, and preserve the existing exact-match and normal visible-text behavior.",
+    "acceptance_notes": "Alternative fixes are allowed as long as leaked NO_REPLY-prefixed output is not delivered."
+  },
+  "visible_context": {
+    "issue_text": "A provider can emit `NO_REPLY` followed immediately by leaked reasoning text, and OpenClaw sends the whole blob to the user instead of suppressing it.",
+    "error_logs": [
+      "telegram delivery emitted 7 raw messages containing repeated NO_REPLY tokens",
+      "stopReason=length while leaked NO_REPLY-prefixed output kept streaming"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_no_reply/tokens.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_no_reply/tokens.py",
+      "tests/test_tokens.py"
+    ],
+    "notes": "This fixture focuses on silent-reply detection, not the full provider runtime."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-63054-no-reply-prefix-leak",
+    "description": "Silent reply detection only accepts exact NO_REPLY matches, allowing leaked trailing text to reach users.",
+    "target_files": [
+      "src/openclaw_no_reply/tokens.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_tokens.SilentReplyDetectionTests::test_no_reply_prefix_with_trailing_text_is_also_suppressed"
+    ],
+    "pass_to_pass": [
+      "test_tokens.SilentReplyDetectionTests::test_exact_no_reply_is_suppressed",
+      "test_tokens.SilentReplyDetectionTests::test_normal_visible_text_is_delivered"
+    ],
+    "required_tests": [
+      "test_tokens.SilentReplyDetectionTests::test_no_reply_prefix_with_trailing_text_is_also_suppressed",
+      "test_tokens.SilentReplyDetectionTests::test_exact_no_reply_is_suppressed",
+      "test_tokens.SilentReplyDetectionTests::test_normal_visible_text_is_delivered"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "This GitHub-derived reproduction is expected to be repaired in code, not by changing tests."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "message-delivery",
+      "silent-reply"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "code"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #63054.",
+  "gold_patch_path": "patches/github/openclaw_no_reply_prefix_fix.diff"
+}

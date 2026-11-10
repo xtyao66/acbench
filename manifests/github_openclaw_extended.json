@@ -1,0 +1,152 @@
+{
+  "name": "github-openclaw-extended",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__pairing_state_array_persistence.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__gpt5_overlay_aggregator_provider.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__minimax_usage_get_method.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__no_reply_prefix_leak.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__plugin_schema_cycle_guard.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__completion_cleanup_finished_workers.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__listener_late_message_guard.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__listener_cron_run_guard.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__listener_telegram_reply_loss_guard.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__listener_subprocess_stdout_guard.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__memory_status_cfg_context.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__memory_status_missing_counts_render.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__discord_native_status_card.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__discord_plugin_routing_shortcuts.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__discord_multi_account_shortcuts.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__docker_healthcheck_false_unhealthy.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__main_lane_failover_too_slow.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__configured_timeout_ignored.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__mcp_tool_hard_timeout.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__upgrade_missing_bundled_entry.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__status_deep_false_invalid_config.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__discord_slash_done_no_content.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__discord_status_done_after_upgrade.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__discord_multi_account_shortcuts_broken.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__discord_new_reset_done.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__listener_whatsapp_crash.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__listener_cron_run_crash.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__listener_telegram_reply_loss.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__listener_subagent_residual_output.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__pi_agent_abort_state_corruption.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__redis_session_eviction_storm.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__grpc_deadline_exceeded_cascade.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__worker_oom_killed_silent.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__rate_limiter_shared_key_collision.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__completion_process_leak_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_outside_active_run_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__status_deep_false_invalid_config_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__discord_slash_done_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__slow_failover_degradation_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__pairing_state_array_approval_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__gpt5_overlay_personality_loss_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__minimax_usage_method_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__no_reply_prefix_leak_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__plugin_schema_cycle_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_cron_run_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_telegram_reply_loss_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__listener_subprocess_stdout_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__discord_plugin_routing_shortcuts_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__discord_multi_account_shortcuts_incident.scenario.json"
+    }
+  ]
+}

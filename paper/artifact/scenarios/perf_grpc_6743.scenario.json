@@ -1,0 +1,109 @@
+{
+  "scenario_id": "perf_grpc_6743",
+  "title": "grpc/metadata: faster ValueFromIncomingContext",
+  "mode": "combined",
+  "service": {
+    "application": "grpc-go",
+    "service": "metadata",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_grpc_6743"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/grpc/grpc-go",
+    "base_commit": "e88e8498c6df39703d1992bc4b677e7ef477145d",
+    "pr_url": "https://github.com/grpc/grpc-go/pull/6743",
+    "license_note": "Real upstream grpc-go optimization PR #6743; measured-speedup task."
+  },
+  "task": {
+    "summary": "Speed up ValueFromIncomingContext so its case-insensitive key match no longer allocates a lowercased copy of every metadata key on each comparison, without changing behavior.",
+    "instructions": "Optimize the metadata package for speed WITHOUT changing behavior. The benchmark BenchmarkValueFromIncomingContext/key-not-found measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./metadata"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "metadata/metadata_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "metadata",
+      "benchmark": "BenchmarkValueFromIncomingContext/key-not-found",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": false,
+      "gold_speedup": 1.225
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "grpc-go-6743",
+    "description": "ValueFromIncomingContext does a case-insensitive key match by calling strings.ToLower(k) on every map key, allocating a new lowercased string per comparison on a hot lookup path.",
+    "target_files": [
+      "metadata/metadata.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "grpc-go-6743",
+    "description": "Case-insensitive metadata key lookup in metadata/metadata.go calls strings.ToLower on each key while scanning the MD map, allocating per comparison instead of comparing in place.",
+    "detection_keywords": [
+      "per-comparison string allocation in metadata lookup",
+      "strings.ToLower in ValueFromIncomingContext loop",
+      "allocations scanning MD map keys",
+      "slow case-insensitive metadata key match"
+    ],
+    "localization_keywords": [
+      "metadata/metadata.go",
+      "ValueFromIncomingContext",
+      "strings.ToLower(k) == key",
+      "MD map range loop"
+    ],
+    "repair_keywords": [
+      "strings.EqualFold for case-insensitive compare",
+      "avoid strings.ToLower allocation per key",
+      "compare keys in place without lowercasing"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Looking up a metadata value by key with ValueFromIncomingContext lowercases every key in the MD map to do a case-insensitive comparison, allocating on each comparison along a hot lookup path.",
+    "error_logs": [],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^BenchmarkValueFromIncomingContext$/key-not-found' ./metadata"
+    ],
+    "relevant_files": [
+      "metadata/metadata.go"
+    ],
+    "notes": "Real upstream optimization PR; the case-insensitive match is changed from strings.ToLower(k)==key to strings.EqualFold(k, key)."
+  },
+  "metadata": {
+    "difficulty": "easy",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "grpc-go"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

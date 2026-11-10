@@ -1,0 +1,11 @@
+--- a/src/openclaw_failover_policy/runtime.py
++++ b/src/openclaw_failover_policy/runtime.py
+@@ -10,5 +10,5 @@ def decide_main_lane_action(
+     """Decide whether the main lane should retry or fail over."""
+ 
+     if error_type != "transport":
+         return "surface_error"
+-    if consecutive_transport_errors > threshold:
++    if consecutive_transport_errors >= threshold:
+         return "fallback"
+     return "retry"

@@ -1,0 +1,117 @@
+{
+  "scenario_id": "code_only_billing_pricing_bundle_threshold",
+  "title": "Billing pricing bundle discount threshold repair",
+  "mode": "code_only",
+  "service": {
+    "application": "billing-pricing",
+    "service": "checkout-pricing",
+    "deployment": "local",
+    "repository_path": "services/fixtures/billing_pricing_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "billing-pricing-bundle-threshold-v1",
+    "license_note": "ACBench local fixture for code-repair development."
+  },
+  "task": {
+    "summary": "Repair incorrect checkout totals for bundle-priced carts.",
+    "instructions": "Investigate why carts with three eligible units are charged too much, fix the pricing logic, and preserve the behaviors already covered by passing tests.",
+    "acceptance_notes": "The solution is graded by behavior, not by exact patch text."
+  },
+  "visible_context": {
+    "issue_text": "Support reports that some promotional carts with exactly three eligible units do not receive the expected bundle pricing before coupon application.",
+    "error_logs": [
+      "checkout-pricing: bundle promotion not applied for a three-unit starter kit order"
+    ],
+    "reproduction_steps": [
+      "Run the pricing unit tests from the repository root.",
+      "Inspect src/billing_pricing/pricing.py."
+    ],
+    "relevant_files": [
+      "src/billing_pricing/pricing.py",
+      "tests/test_pricing.py"
+    ],
+    "notes": "Gift cards are intentionally excluded from bundle counts."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "billing-pricing-bundle-threshold-001",
+    "description": "The bundle discount threshold is evaluated incorrectly for one boundary case.",
+    "target_files": [
+      "src/billing_pricing/pricing.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_pricing.PricingTests::test_exactly_three_eligible_units_trigger_bundle_discount"
+    ],
+    "pass_to_pass": [
+      "test_pricing.PricingTests::test_gift_cards_do_not_count_toward_bundle_threshold",
+      "test_pricing.PricingTests::test_two_distinct_items_get_small_bundle_discount"
+    ],
+    "required_tests": [
+      "test_pricing.PricingTests::test_exactly_three_eligible_units_trigger_bundle_discount",
+      "test_pricing.PricingTests::test_gift_cards_do_not_count_toward_bundle_threshold",
+      "test_pricing.PricingTests::test_two_distinct_items_get_small_bundle_discount"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "Implementation fixes are expected; test edits are not."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "pricing",
+      "boundary-condition"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "local",
+    "code",
+    "pricing"
+  ],
+  "notes": "Local boundary-condition pricing task.",
+  "gold_patch_path": "patches/billing_pricing_bundle_fix.diff"
+}

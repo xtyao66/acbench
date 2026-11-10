@@ -1,0 +1,41 @@
+<mxfile host="app.diagrams.net" version="24.0.0">
+  <diagram name="ACBench validation funnel" id="acbench-validation-funnel">
+    <mxGraphModel dx="760" dy="460" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="430" pageHeight="210" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Scenario validation funnel" style="text;html=1;fontSize=14;fontStyle=1;align=center;verticalAlign=middle;fontColor=#104D70;" vertex="1" parent="1">
+          <mxGeometry x="35" y="10" width="360" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="start" value="41 candidate&#10;merged perf PRs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#6B7280;fontColor=#1a1a1a;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="18" y="72" width="104" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="filters" value="Validation filters&#10;applies + tests&#10;stable speedup&#10;isolated benchmark" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF1F6;strokeColor=#1A80BB;fontColor=#1a1a1a;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="162" y="58" width="112" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="retained" value="14 retained&#10;scenarios&#10;6 codebases" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F0F8;strokeColor=#1A80BB;fontColor=#104D70;fontStyle=1;fontSize=12;align=center;" vertex="1" parent="1">
+          <mxGeometry x="316" y="72" width="96" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="excluded" value="27 excluded&#10;during validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7E9E9;strokeColor=#A00000;fontColor=#A00000;fontStyle=1;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="162" y="166" width="112" height="42" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#6B7280;" edge="1" parent="1" source="start" target="filters">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;strokeColor=#1A80BB;fontColor=#104D70;" edge="1" parent="1" source="filters" target="retained">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="fails any filter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;strokeColor=#A00000;fontColor=#A00000;" edge="1" parent="1" source="filters" target="excluded">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="193" y="144" as="sourcePoint" />
+            <mxPoint x="193" y="162" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

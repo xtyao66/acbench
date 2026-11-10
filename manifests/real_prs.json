@@ -1,0 +1,48 @@
+{
+ "name": "real_prs",
+ "description": "14 validated real cloud-infra incident->fix PRs (prometheus/nats/victoria), Go backend, diagnose->repair conditions.",
+ "scenarios": [
+  {
+   "scenario": "tasks/scenarios/real/real_nats_4730.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_nats_6612.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_nats_7735.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_nats_7744.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_14983.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_15141.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_17554.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_18056.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_18382.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_18838.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_prometheus_18928.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_victoria_10312.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_victoria_10629.scenario.json"
+  },
+  {
+   "scenario": "tasks/scenarios/real/real_victoria_8991.scenario.json"
+  }
+ ]
+}

@@ -1,0 +1,34 @@
+diff --git a/lib/uint64set/uint64set.go b/lib/uint64set/uint64set.go
+index 95fee3ee00595..5112129ac3821 100644
+--- a/lib/uint64set/uint64set.go
++++ b/lib/uint64set/uint64set.go
+@@ -359,12 +359,23 @@ func (s *Set) Subtract(a *Set) {
+ 		// Fast path - nothing to subtract.
+ 		return
+ 	}
+-	a.ForEach(func(part []uint64) bool {
+-		for _, x := range part {
+-			s.Del(x)
+-		}
+-		return true
+-	})
++	if s.Len() >= a.Len() {
++		a.ForEach(func(part []uint64) bool {
++			for _, x := range part {
++				s.Del(x)
++			}
++			return true
++		})
++	} else {
++		s.ForEach(func(part []uint64) bool {
++			for _, x := range part {
++				if a.Has(x) {
++					s.Del(x)
++				}
++			}
++			return true
++		})
++	}
+ }
+
+ // Equal returns true if s contains the same items as a.

@@ -1,0 +1,22 @@
+--- a/src/openclaw_memory_status/status.py
++++ b/src/openclaw_memory_status/status.py
+@@ -50,15 +50,18 @@ def resolve_memory_search_config(
+     resolved: dict[str, object] = {
+         "primary": get_memory_embedding_provider(provider, merged)
+     }
+     if fallback and fallback != "none":
+-        resolved["fallback"] = get_memory_embedding_provider(fallback)
++        resolved["fallback"] = get_memory_embedding_provider(fallback, merged)
+     return resolved
+ 
+ 
+ def render_memory_status_line(memory: dict[str, object]) -> str:
+     """Render one human-readable memory status line."""
+ 
+     parts = [f"plugin {memory['plugin']}", "vector ready", "fts ready"]
+-    parts.append(f"{memory.get('files')} files")
+-    parts.append(f"{memory.get('chunks')} chunks")
++    if "files" in memory and "chunks" in memory:
++        parts.append(f"{memory['files']} files")
++        parts.append(f"{memory['chunks']} chunks")
+     return " · ".join(parts)

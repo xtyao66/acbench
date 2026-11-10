@@ -1,0 +1,112 @@
+{
+  "scenario_id": "github_ops_openclaw_pi_agent_abort_state_corruption",
+  "title": "OpenClaw should not corrupt run state when late pi-agent events arrive after an abort",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "pi-agent-lifecycle",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/63220",
+    "snapshot_key": "openclaw-63220-synthetic-ops-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #63220."
+  },
+  "task": {
+    "summary": "Diagnose why late pi-agent listener callbacks after an abort corrupt the in-memory run state.",
+    "instructions": "Use the abort-race evidence to confirm the late-listener failure, localize it to the pi-agent active-run lifecycle, and propose an ops-level repair plan that drops late events safely without corrupting fallback state.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "After a timeout or abort, late pi-agent callbacks can still fire and corrupt the in-memory run state for the remaining fallback chain.",
+    "error_logs": [
+      "Unhandled promise rejection: Error: Agent listener invoked outside active run",
+      "subsequent models in the fallback chain failed after the lifecycle race fired"
+    ],
+    "reproduction_steps": [
+      "Inspect the timeout/abort cascade evidence.",
+      "Explain where the active-run lifecycle should drop late updates and avoid state corruption."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models a lifecycle-race incident around post-abort listener callbacks."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-63220-pi-agent-abort-state-corruption",
+    "description": "Synthetic lifecycle-race incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "abort",
+      "outside active run",
+      "fallback chain"
+    ],
+    "localization_keywords": [
+      "pi-agent-core",
+      "active run lifecycle",
+      "processEvents",
+      "late callbacks"
+    ],
+    "repair_keywords": [
+      "drop late callbacks",
+      "return early",
+      "guard closed runs",
+      "prevent state corruption"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "expert",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "lifecycle-race",
+      "fallback-state"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #63220."
+}

@@ -1,0 +1,18 @@
+diff --git a/src/log_scrubber/scrubber.py b/src/log_scrubber/scrubber.py
+index 1026565..a6c0bf1 100644
+--- a/src/log_scrubber/scrubber.py
++++ b/src/log_scrubber/scrubber.py
+@@ -28,10 +28,9 @@ def scrub_lines(lines: list[str]) -> list[str]:
+     """
+ 
+     scrubbed: list[str] = []
++    # Compile the fixed redaction pattern once before the loop and reuse the
++    # cached compiled pattern for every line instead of recompiling per line.
++    pattern = compile_pattern(SECRET_PATTERN)
+     for line in lines:
+-        # Re-compiling the fixed redaction pattern on every line: this loop
+-        # invokes the regex compiler N times for a batch of N lines even though
+-        # the pattern never changes.
+-        pattern = compile_pattern(SECRET_PATTERN)
+         scrubbed.append(pattern.sub(REDACTION, line))
+     return scrubbed

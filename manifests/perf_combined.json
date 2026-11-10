@@ -1,0 +1,27 @@
+{
+  "name": "perf_combined",
+  "description": "Performance-engineering combined scenarios (perf incident -> profiling diagnosis -> optimization; counting-based FAIL_TO_PASS oracle).",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/local/combined/audit_search__overfetch_latency_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/config_reload__quote_latency_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/dedupe_filter__ingestion_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/leaderboard_rank__sort_storm_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/notify_fanout__lookup_latency_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/quote_pricing__recompute_cpu_incident.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/combined/regex_recompile__scrub_latency_incident.scenario.json"
+    }
+  ]
+}

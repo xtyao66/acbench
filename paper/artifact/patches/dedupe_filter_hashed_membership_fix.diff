@@ -1,0 +1,19 @@
+diff --git a/src/dedupe_filter/handler.py b/src/dedupe_filter/handler.py
+index 5276b15..d5cd6f7 100644
+--- a/src/dedupe_filter/handler.py
++++ b/src/dedupe_filter/handler.py
+@@ -27,10 +27,10 @@ def filter_new_events(
+     accepted: list[dict[str, str]] = []
+     for event in events:
+         event_id = event["event_id"]
+-        # Repeated linear membership scan: ``event_id in seen`` walks the entire
+-        # growing list of already-seen ids on every iteration. For a batch of N
+-        # fresh events this is O(N^2) element comparisons.
+-        if event_id in seen:
++        # Hashed membership test: ``seen.has(event_id)`` is an O(1) set lookup,
++        # so de-duplicating a batch of N events costs O(N) comparisons overall
++        # instead of the O(N^2) repeated linear scan.
++        if seen.has(event_id):
+             continue
+         seen.add(event_id)
+         accepted.append(event)

@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_victoria_8991",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Adding a global time filter to a query programmatically yields a query that is not equivalent to parsing the same closed time-range filter from a query string: the serialized query text differs in spacing and the effective upper time bound is wrong.",
+    "root_cause": "In the log-storage query parser module, the routine that attaches a global time filter to an already-built query constructs the time-filter object by hand instead of reusing the same normalization the string parser applies. Two things diverge from the parsing path: it stores the upper time bound exactly as the caller supplied it rather than expanding an inclusive closed-bracket endpoint to the last instant of that boundary's resolution, and it builds the human-readable representation of the range with different spacing than the parser emits. Because the programmatic path and the parsing path produce different internal upper bounds and different serialized text, a query assembled in code is not equivalent to the same range parsed from text.",
+    "remediation": "Make the programmatic time-filter construction go through, or replicate, the same end-time normalization and serialization the string parser uses: expand the inclusive upper bound to the last instant covered by that boundary before storing it, and format the range representation with the same spacing the parser produces, so both paths yield identical internal bounds and identical serialized output.",
+    "evidence": [
+      "unexpected result; got _time:[2025-05-20T15:41:00Z,2025-05-20T15:46:00Z] * want _time:[2025-05-20T15:41:00Z, 2025-05-20T15:46:00Z] *",
+      "wrong maxTimestamp; got 1747755960000000000; want 1747755960999999999",
+      "Failing test TestMatchingAddTimeFilter_Parsing in ./lib/logstorage"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Adding a global time filter to a query programmatically yields a query that is not equivalent to parsing the same closed time-range filter from a query string: the serialized query text differs in spacing and the effective upper time bound is wrong.",
+    "root_cause": "In the log-storage query parser module, the shared routine that parses a closed time-range filter from text is at fault. It is suspected to be inconsistent about how it expands an inclusive upper endpoint and how it renders spacing in the serialized form, so the two paths only happen to disagree because the text-parsing side rounds the upper bound up to the end of the boundary's resolution and inserts extra spacing that the programmatic side never expected. The mismatch therefore originates in the parsing and serialization helpers that interpret and re-emit the time-range syntax, which apply boundary expansion and formatting that the rest of the system does not consistently rely on.",
+    "remediation": "Adjust the text time-range parsing and serialization helpers so they do not expand the inclusive upper endpoint and do not insert the extra spacing, making the parsed form line up with the directly constructed form.",
+    "evidence": [
+      "unexpected result; got _time:[2025-05-20T15:41:00Z,2025-05-20T15:46:00Z] * want _time:[2025-05-20T15:41:00Z, 2025-05-20T15:46:00Z] *",
+      "wrong maxTimestamp; got 1747755960000000000; want 1747755960999999999",
+      "Failing test TestMatchingAddTimeFilter_Parsing in ./lib/logstorage"
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because both paths share the same time-range concept and an engineer could reasonably suspect the parser's boundary-expansion and formatting helpers of being the odd one out. It is incorrect because the test's expected values match the parsing path's behavior (inclusive end expanded to the last instant, and the spaced representation), so the parser is the correct reference; editing it would break the established, tested parsing contract while leaving the actual defect in the programmatic filter-construction routine untouched."
+}

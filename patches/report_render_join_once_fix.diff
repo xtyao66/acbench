@@ -1,0 +1,21 @@
+diff --git a/src/report_render/serializer.py b/src/report_render/serializer.py
+index 1111111..2222222 100644
+--- a/src/report_render/serializer.py
++++ b/src/report_render/serializer.py
+@@ -28,10 +28,10 @@ def render_report(records: list[dict[str, object]]) -> str:
+     header line plus its trailing newline.
+     """
+
+-    # Accumulate the document one line at a time. Each ``+=`` rebuilds the whole
+-    # ``report`` string built so far, so this loop is O(total_output_length^2).
+-    report = header_line() + "\n"
++    # Collect the rendered lines and join them once. Building a list and a
++    # single ``"".join`` walks the output exactly once, so this is O(N) in the
++    # total document length instead of the O(N^2) repeated prefix-copying.
++    parts = [header_line()]
+     for record in records:
+-        line = format_row(record)
+-        report = report + line + "\n"
+-    return report
++        parts.append(format_row(record))
++    return "\n".join(parts) + "\n"

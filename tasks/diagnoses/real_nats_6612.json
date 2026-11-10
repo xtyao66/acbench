@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_nats_6612",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a subject transform applies a wildcard mapping to an incoming subject that has fewer tokens than the mapping expects, the server crashes with an index-out-of-range runtime panic instead of completing the transform by substituting an empty token.",
+    "root_cause": "In the subject-transform module, the routine that builds the destination subject from a tokenized source iterates over the destination's mapping instructions and, for each wildcard-substitution instruction, reaches into the sequence of source tokens using the position recorded for that wildcard. It performs that lookup directly, assuming the source always contains at least as many tokens as the largest referenced position. When an incoming subject is shorter than expected, the referenced position lies beyond the end of the source-token sequence, so the unchecked lookup steps past the end of the collection and triggers a runtime panic that aborts the goroutine and is reported as a recovered panic while applying the mapping. The defect is the absence of a length/bounds guard before the per-wildcard token lookup.",
+    "remediation": "Before reading a source token at the position a wildcard mapping refers to, verify that position is within the bounds of the available source-token sequence; when the referenced token is missing, treat it as an empty substitution rather than indexing past the end, so the transform completes gracefully instead of panicking.",
+    "evidence": [
+      "panic: runtime error: index out of range [1] with length 1",
+      "goroutine running server.(*subjectTransform).TransformTokenizedSubject",
+      "Run: go test -run '^TestSubjectTransformDoesntPanicTransformingMissingToken$' ./server"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a subject transform applies a wildcard mapping to an incoming subject that has fewer tokens than the mapping expects, the server crashes with an index-out-of-range runtime panic instead of completing the transform by substituting an empty token.",
+    "root_cause": "The crash stems from the earlier tokenization step that splits an incoming subject into its component tokens before the transform is applied. That splitting routine collapses consecutive separators and drops trailing empty segments, so a subject that ends with an empty segment yields a token collection that is one element shorter than the structural shape the transform was compiled against. Because the transform's compiled mapping was sized against a fully populated subject, the downstream substitution then reads one position too far. The real fix therefore belongs in the subject-splitting helper, which should preserve empty trailing segments so the produced token collection matches the expected arity.",
+    "remediation": "Adjust the subject-splitting helper so it retains empty and trailing segments rather than discarding them, ensuring the resulting token collection always has the full expected number of elements; with the arity preserved, the later wildcard substitution will find a (possibly empty) token at every referenced position.",
+    "evidence": [
+      "panic: runtime error: index out of range [1] with length 1",
+      "goroutine running server.(*subjectTransform).TransformTokenizedSubject",
+      "recovered panic while applying subject transform mapping"
+    ]
+  },
+  "wrong_rationale": "It is plausible because the panic clearly involves a token collection that is shorter than expected, and blaming the upstream tokenizer for dropping segments is a natural story that fits the \"length 1\" detail; however it misleads by pointing at the splitting helper rather than the transform routine, where the real defect is simply a missing bounds check before the wildcard token lookup, and changing tokenization would not address the genuinely-shorter-subject case the regression test exercises."
+}

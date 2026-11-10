@@ -1,0 +1,114 @@
+{
+  "_defaults": {
+    "aiops_agent_ref": "acbench.agents.gold_ops:GoldOpsAgent"
+  },
+  "github_code_openclaw_pairing_state_array_persistence": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_gpt5_overlay_aggregator_provider": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_minimax_usage_get_method": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_no_reply_prefix_leak": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_plugin_schema_cycle_guard": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_completion_cleanup_finished_workers": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_listener_late_message_guard": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_listener_cron_run_guard": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_listener_telegram_reply_loss_guard": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_listener_subprocess_stdout_guard": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_memory_status_cfg_context": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_memory_status_missing_counts_render": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_discord_native_status_card": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_discord_plugin_routing_shortcuts": {
+    "use_gold_patch": true
+  },
+  "github_code_openclaw_discord_multi_account_shortcuts": {
+    "use_gold_patch": true
+  },
+  "github_ops_openclaw_docker_healthcheck_false_unhealthy": {},
+  "github_ops_openclaw_main_lane_failover_too_slow": {},
+  "github_ops_openclaw_configured_timeout_ignored": {},
+  "github_ops_openclaw_mcp_tool_hard_timeout": {},
+  "github_ops_openclaw_upgrade_missing_bundled_entry": {},
+  "github_ops_openclaw_status_deep_false_invalid_config": {},
+  "github_ops_openclaw_discord_slash_done_no_content": {},
+  "github_ops_openclaw_discord_status_done_after_upgrade": {},
+  "github_ops_openclaw_discord_multi_account_shortcuts_broken": {},
+  "github_ops_openclaw_discord_new_reset_done": {},
+  "github_ops_openclaw_listener_whatsapp_crash": {},
+  "github_ops_openclaw_listener_cron_run_crash": {},
+  "github_ops_openclaw_listener_telegram_reply_loss": {},
+  "github_ops_openclaw_listener_subagent_residual_output": {},
+  "github_ops_openclaw_pi_agent_abort_state_corruption": {},
+  "github_ops_openclaw_redis_session_eviction_storm": {},
+  "github_ops_openclaw_grpc_deadline_exceeded_cascade": {},
+  "github_ops_openclaw_worker_oom_killed_silent": {},
+  "github_ops_openclaw_rate_limiter_shared_key_collision": {},
+  "github_combined_openclaw_completion_process_leak": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_listener_outside_active_run": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_status_deep_false_invalid_config": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_discord_slash_done": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_slow_failover_degradation": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_pairing_state_array_approval": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_gpt5_overlay_personality_loss": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_minimax_usage_method": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_no_reply_prefix_leak": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_plugin_schema_cycle": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_listener_cron_run": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_listener_telegram_reply_loss": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_listener_subprocess_stdout": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_discord_plugin_routing_shortcuts": {
+    "use_gold_patch": true
+  },
+  "github_combined_openclaw_discord_multi_account_shortcuts": {
+    "use_gold_patch": true
+  }
+}

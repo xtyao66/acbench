@@ -1,0 +1,13 @@
+diff --git a/tsdb/head_append.go b/tsdb/head_append.go
+index 4a6beab4827..c85a8ca8c86 100644
+--- a/tsdb/head_append.go
++++ b/tsdb/head_append.go
+@@ -848,7 +848,7 @@ func (a *headAppender) AppendHistogram(ref storage.SeriesRef, lset labels.Labels
+ 		// TODO(codesome): If we definitely know at this point that the sample is ooo, then optimise
+ 		// to skip that sample from the WAL and write only in the WBL.
+ 		_, delta, err := s.appendableHistogram(t, h, a.headMaxt, a.minValidTime, a.oooTimeWindow)
+-		if err != nil {
++		if err == nil {
+ 			s.pendingCommit = true
+ 		}
+ 		s.Unlock()

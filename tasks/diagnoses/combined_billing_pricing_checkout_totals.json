@@ -1,0 +1,39 @@
+{
+  "scenario_id": "combined_billing_pricing_checkout_totals",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Carts that contain enough bundle-capable items to qualify for a promotion are being charged the full, undiscounted total, producing overpriced bundles in production checkout.",
+    "root_cause": "The pricing routine in the billing and pricing module decides whether a cart qualifies for the bundle promotion using a quantity comparison whose boundary is off by one. The check treats the qualifying quantity as if it must be strictly above the promotion's minimum rather than at or above it, so a cart that lands exactly on the promotion boundary is judged ineligible and the discount is never applied. As a result, the smallest qualifying cart receives the full price while larger carts behave as expected, which matches the report that the boundary-sized order drifts higher than the pricing playbook predicts.",
+    "remediation": "Correct the boundary condition in the promotion-eligibility check so that a cart whose quantity exactly equals the promotion's minimum is treated as qualifying, ensuring the discount applies at the inclusive threshold rather than only above it.",
+    "evidence": [
+      "alerts/checkout_totals.log: pricing drift detected for bundle-capable starter kits",
+      "support: three-unit carts receive higher totals than the pricing playbook expects",
+      "Overpriced bundles in production carts that should have received a promotion"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Carts that contain enough bundle-capable items to qualify for a promotion are being charged the full, undiscounted total, producing overpriced bundles in production checkout.",
+    "root_cause": "The discount amount itself is computed incorrectly: once a cart is judged eligible, the routine derives the per-unit promotional price by rounding or truncating in a way that collapses the reduction to nothing for low-value starter kits, so the qualifying carts pass the eligibility gate but the applied discount evaluates to zero. The effect is that the cart total comes out identical to the undiscounted price, which would explain why these carts appear overpriced even though the promotion is supposedly recognized.",
+    "remediation": "Revisit the discount-amount calculation and its rounding behavior so the promotional reduction is computed and subtracted with full precision before the total is assembled, preventing the discount from collapsing to zero for low-priced items.",
+    "evidence": [
+      "alerts/checkout_totals.log: pricing drift detected for bundle-capable starter kits",
+      "support: three-unit carts receive higher totals than the pricing playbook expects",
+      "Overpriced bundles in production carts that should have received a promotion"
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because a zero-valued discount and a never-triggered discount produce the same observable symptom (full price at checkout), so an engineer could reasonably suspect the rounding in the amount calculation; it misleads by pointing at the discount-computation step instead of the eligibility comparison, whose boundary is the actual defect, so any fix to rounding would leave the boundary-sized cart still ineligible."
+}

@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_discord_plugin_routing_shortcuts",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Most native Discord slash commands reply with only a terminal acknowledgement instead of their real output, because each native interaction is being handled through a text-style plugin-command path that yields an unrenderable reply.",
+    "root_cause": "In the command dispatcher inside the Discord commands module, the routine that decides how to handle an incoming interaction checks the plugin-command matching branch before it tries the native shortcut handler. A native slash interaction gets turned into a prompt-style string, that string happens to match a plugin command, and the plugin path then produces a reply that cannot be rendered, so the gateway falls back to sending a bare acknowledgement. The fault is one of ordering: the native handling branch is evaluated too late, after the text-plugin branch has already claimed and consumed the interaction.",
+    "remediation": "Reorder the dispatcher so that native slash interactions are recognized and answered by the native handler first, and only fall through to the text plugin-command matching path when the interaction is genuinely a text-style command. The native path must short-circuit before the plugin branch can claim a native interaction, while leaving the existing text plugin-command behavior intact.",
+    "evidence": [
+      "Issue: Most Discord native slash commands respond with just `Done` because they are routed through a text-style plugin command path.",
+      "Log: native slash command built a prompt string and matched a plugin command",
+      "Log: plugin reply was not renderable, so the gateway sent Done."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Most native Discord slash commands reply with only a terminal acknowledgement instead of their real output, because each native interaction is being handled through a text-style plugin-command path that yields an unrenderable reply.",
+    "root_cause": "The plugin-command reply produced for these interactions cannot be turned into a Discord-visible message because the reply-formatting/rendering step in the commands module does not know how to serialize the structured object a plugin returns. Since the renderer cannot convert that object into message content, the gateway substitutes a generic placeholder acknowledgement. The problem therefore lives in the response-rendering layer that converts plugin output into a chat reply, not in how interactions are classified.",
+    "remediation": "Extend the reply-rendering step so it can serialize the structured plugin response into proper message content, adding handling for the object shape the plugin returns and falling back gracefully instead of emitting a placeholder when a field is missing.",
+    "evidence": [
+      "Issue: Most Discord native slash commands respond with just `Done`.",
+      "Log: plugin reply was not renderable, so the gateway sent Done.",
+      "Log: native slash command built a prompt string and matched a plugin command"
+    ]
+  },
+  "wrong_rationale": "The \"not renderable, so the gateway sent Done\" log makes a rendering-layer fix look like the obvious target, and improving the serializer is a coherent action a capable engineer would take. It is incorrect because the real defect is the dispatch ordering that misroutes native interactions into the plugin path at all; making plugin replies renderable would not stop native commands from being hijacked away from their native output."
+}

@@ -1,0 +1,117 @@
+{
+  "scenario_id": "perf_nats_5573",
+  "title": "Loading the next matching message for a wildcard filter reallocates the token slice on every subject, making sparse wildcard scans slow",
+  "mode": "combined",
+  "service": {
+    "application": "nats",
+    "service": "server",
+    "deployment": "local",
+    "repository_path": "/volt/perfrepos/perf_nats_5573"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/nats-io/nats-server",
+    "base_commit": "2f364d9790234b8afb5f03b341b02a148298475a",
+    "pr_url": "https://github.com/nats-io/nats-server/pull/5573",
+    "license_note": "Real upstream nats optimization PR #5573; measured-speedup task."
+  },
+  "task": {
+    "summary": "Reduce per-call allocations in the wildcard isMatch path of filestore/memstore so loading the next matching message over sparse subjects is faster.",
+    "instructions": "Optimize the server package for speed WITHOUT changing behavior. The benchmark Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard measures it; existing tests must still pass.",
+    "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "language": "go",
+    "test_cmds": [
+      "go test -count=1 ./server"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "evaluation": {
+    "strategy": "performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [
+      "server/filestore_test.go"
+    ],
+    "allow_alternative_fixes": true,
+    "perf": {
+      "pkg": "server",
+      "benchmark": "Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard",
+      "benchtime": "1s",
+      "reps": 5,
+      "benchmark_preexisting": true,
+      "gold_speedup": null
+    }
+  },
+  "success_criteria": {
+    "require_detection": false,
+    "require_localization": false,
+    "require_repair": false,
+    "require_build_success": false,
+    "require_test_success": true
+  },
+  "code_fault": {
+    "source": "upstream-pr",
+    "defect_id": "nats-5573",
+    "description": "The wildcard isMatch closure re-tokenizes each subject via tokenizeSubjectIntoSlice but discards the grown backing array, reallocating on every call for long subjects instead of reusing the resized slice.",
+    "target_files": [
+      "server/filestore.go",
+      "server/memstore.go"
+    ]
+  },
+  "ops_fault": {
+    "source": "upstream-pr",
+    "problem_id": "nats-5573",
+    "description": "Profiling a very sparse wildcard message scan shows the hot path dominated by repeated slice allocations inside isMatch / tokenizeSubjectIntoSlice.",
+    "detection_keywords": [
+      "excessive allocations",
+      "GC pressure",
+      "high allocs/op in benchmark",
+      "repeated heap allocations in hot loop",
+      "slow ns/op on sparse wildcard scan"
+    ],
+    "localization_keywords": [
+      "filestore.go",
+      "memstore.go",
+      "isMatch closure",
+      "tokenizeSubjectIntoSlice call in firstMatching",
+      "filteredPendingLocked / NumPending / filteredStateLocked / SubjectsTotals",
+      "tsa/fsa [32]string token buffers re-tokenized per subject"
+    ],
+    "repair_keywords": [
+      "reuse the grown backing array across tokenizeSubjectIntoSlice calls",
+      "assign the returned slice back to tsa/fsa instead of a throwaway local",
+      "avoid per-call slice realloc by keeping the resized slice between iterations",
+      "stack [32]string buffer reused via tsa = tokenizeSubjectIntoSlice(tsa[:0], subj)"
+    ]
+  },
+  "visible_context": {
+    "issue_text": "Scanning for the next message matching a wildcard filter over a stream with very sparse matches is slower than expected, and the operation allocates heavily as subjects get longer.",
+    "error_logs": [
+      "Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard-10   ...   N ns/op   high B/op   many allocs/op (allocations dominate profile in isMatch -> tokenizeSubjectIntoSlice)"
+    ],
+    "reproduction_steps": [
+      "go test -run='^$' -bench='^Benchmark_FileStoreLoadNextMsgVerySparseMsgsInBetweenWithWildcard$' ./server"
+    ],
+    "relevant_files": [
+      "server/filestore.go",
+      "server/memstore.go"
+    ],
+    "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "go",
+    "framework": "gobench",
+    "categories": [
+      "perf",
+      "real-pr",
+      "nats"
+    ],
+    "source_benchmark": "real-optimization-pr"
+  }
+}

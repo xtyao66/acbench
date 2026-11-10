@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_victoria_10312",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Listing tenants for a specific day returns tenants that have no data on that day; narrowing the requested time range fails to narrow the tenant list as expected.",
+    "root_cause": "In the storage index module's routine that lists tenants for a given day, the code walks the per-date tenant index entries but uses only the matched prefix to identify each tenant while throwing away the remaining trailing portion of the entry. That trailing portion is exactly what carries the date the entry belongs to. Because the routine never decodes that trailing date and never compares it against the day the caller asked for, every tenant whose entry merely shares the common prefix is appended to the result set unconditionally. As a result, tenants whose samples live on other days leak into the answer for the requested day.",
+    "remediation": "When iterating the per-date tenant index entries, decode the trailing portion of each entry to recover the date it represents, and include a tenant in the result only when that decoded date matches the day being queried. The empty or short-tail case should be guarded so the comparison is safe.",
+    "evidence": [
+      "SearchTenants(tr) returned tenants outside the requested date range",
+      "per-date tenant query includes tenants whose data is on other dates",
+      "go test -run '^TestStorageSearchTenantsOnDate$' ./lib/storage"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Listing tenants for a specific day returns tenants that have no data on that day; narrowing the requested time range fails to narrow the tenant list as expected.",
+    "root_cause": "The defect lies in how the requested time window is translated into the set of days to scan. The routine that converts a caller's time range into discrete day buckets rounds the boundaries outward, so a narrow window that should map to a single day ends up enumerating an adjacent day as well. Because the search then unions the tenants found across all enumerated day buckets, tenants that only have data on the neighboring day are pulled into the result for the requested day, making the list appear too broad regardless of how tightly the caller narrows the range.",
+    "remediation": "Correct the time-range-to-day conversion so the window's start and end are mapped to day buckets using inclusive lower and exclusive upper boundaries, ensuring a sub-day window resolves to exactly the day it falls on rather than spilling into an adjacent day.",
+    "evidence": [
+      "SearchTenants(tr) returned tenants outside the requested date range",
+      "unexpected tenants for time range; got more tenants than have samples on that date",
+      "go test -run '^TestStorageSearchTenantsOnDate$' ./lib/storage"
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because the symptom is literally \"a narrow time range returns too many tenants,\" which naturally suggests the range-to-day boundary math is over-inclusive; an engineer would fix the day-bucket conversion. It is incorrect because the true fault is inside the per-day index scan, which ignores the date stored in each entry's tail, so even a correctly computed single day would still return cross-date tenants."
+}

@@ -1,0 +1,32 @@
+diff --git a/src/leaderboard_rank/handler.py b/src/leaderboard_rank/handler.py
+index 8c9c7de..0fd3f00 100644
+--- a/src/leaderboard_rank/handler.py
++++ b/src/leaderboard_rank/handler.py
+@@ -23,18 +23,17 @@ def rank_players(
+ 
+     rows = list(scores.items())
+ 
++    # Rank the scoreboard a single time before the loop; the board never changes
++    # while we answer the batch, so one sort is enough for every queried player.
++    ranked = meter.sorted_desc(rows)
++    rank_by_player = {
++        candidate_id: (index + 1, candidate_score)
++        for index, (candidate_id, candidate_score) in enumerate(ranked)
++    }
++
+     results: list[dict[str, object]] = []
+     for player_id in queries:
+-        # Re-sort the entire scoreboard on every iteration: ranking a batch of N
+-        # players re-sorts the board N times even though the board never changes.
+-        ranked = meter.sorted_desc(rows)
+-        rank = 0
+-        score = 0
+-        for index, (candidate_id, candidate_score) in enumerate(ranked):
+-            if candidate_id == player_id:
+-                rank = index + 1
+-                score = candidate_score
+-                break
++        rank, score = rank_by_player.get(player_id, (0, 0))
+         results.append(
+             {
+                 "player_id": player_id,

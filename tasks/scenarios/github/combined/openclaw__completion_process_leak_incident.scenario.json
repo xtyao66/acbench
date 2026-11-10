@@ -1,0 +1,149 @@
+{
+  "scenario_id": "github_combined_openclaw_completion_process_leak",
+  "title": "OpenClaw completion worker leak causes memory pressure",
+  "mode": "combined",
+  "service": {
+    "application": "openclaw",
+    "service": "completion-runtime",
+    "deployment": "local",
+    "repository_path": "services/fixtures/github/openclaw_completion_runtime_buggy"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.2.2-3",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/10864",
+    "snapshot_key": "openclaw-10864-localized-fixture-v1",
+    "license_note": "Localized ACBench reproduction derived from openclaw/openclaw issue #10864."
+  },
+  "task": {
+    "summary": "Triage a completion-process leak incident and repair the cleanup path.",
+    "instructions": "Use the incident clues to localize why finished completion workers remain after sessions end, repair the cleanup behavior, and preserve the healthy cleanup cases already covered by passing tests.",
+    "acceptance_notes": "Both ops and code requirements must pass."
+  },
+  "visible_context": {
+    "issue_text": "Orphan `openclaw-completion` workers accumulate over time, driving memory pressure and slowing message handling.",
+    "error_logs": [
+      "45 orphan openclaw-completion processes observed after 48 hours of uptime",
+      "gateway memory usage peaked at 24.8GB",
+      "Slow listener detected: DiscordMessageListener took 311.2 seconds"
+    ],
+    "reproduction_steps": [
+      "Run the unit tests from the repository root.",
+      "Inspect src/openclaw_completion_runtime/runtime.py."
+    ],
+    "relevant_files": [
+      "src/openclaw_completion_runtime/runtime.py",
+      "tests/test_runtime.py"
+    ],
+    "notes": "This fixture models the cleanup path behind the process leak, not the full OpenClaw runtime."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-10864-completion-leak",
+    "description": "Synthetic incident for orphan completion workers and memory pressure derived from the GitHub issue.",
+    "detection_keywords": [
+      "orphan",
+      "memory pressure",
+      "completion"
+    ],
+    "localization_keywords": [
+      "session cleanup",
+      "finished completion workers",
+      "cleanup path",
+      "runtime.py",
+      "missing cleanup",
+      "cleanup calls",
+      "worker termination"
+    ],
+    "repair_keywords": [
+      "cleanup",
+      "remove finished workers",
+      "session end"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "openclaw-10864-session-cleanup",
+    "description": "Finished completion worker records are not removed when a session ends.",
+    "target_files": [
+      "src/openclaw_completion_runtime/runtime.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_runtime.CompletionRuntimeTests::test_finished_completion_processes_are_removed_when_session_ends"
+    ],
+    "pass_to_pass": [
+      "test_runtime.CompletionRuntimeTests::test_running_completion_processes_are_removed_when_session_ends",
+      "test_runtime.CompletionRuntimeTests::test_other_sessions_are_not_affected_by_cleanup"
+    ],
+    "required_tests": [
+      "test_runtime.CompletionRuntimeTests::test_finished_completion_processes_are_removed_when_session_ends",
+      "test_runtime.CompletionRuntimeTests::test_running_completion_processes_are_removed_when_session_ends",
+      "test_runtime.CompletionRuntimeTests::test_other_sessions_are_not_affected_by_cleanup"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This GitHub-derived reproduction expects incident localization and a code repair."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "process-cleanup",
+      "memory-pressure"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "combined"
+  ],
+  "notes": "Localized reproduction of openclaw/openclaw issue #10864.",
+  "gold_patch_path": "patches/github/openclaw_completion_cleanup_fix.diff"
+}

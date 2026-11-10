@@ -1,0 +1,117 @@
+{
+  "scenario_id": "code_only_feature_router_denylist_precedence",
+  "title": "Feature router denylist precedence repair",
+  "mode": "code_only",
+  "service": {
+    "application": "feature-router",
+    "service": "rollout-guard",
+    "deployment": "local",
+    "repository_path": "services/fixtures/feature_router_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "feature-router-denylist-precedence-v1",
+    "license_note": "ACBench local fixture for rollout safety validation."
+  },
+  "task": {
+    "summary": "Repair rollout guard logic so blocked users cannot see the new variant.",
+    "instructions": "Investigate the precedence rules in the feature router, fix the denylist handling, and keep the existing allowlist behavior intact.",
+    "acceptance_notes": "Behavioral correctness matters more than matching a reference diff."
+  },
+  "visible_context": {
+    "issue_text": "The release team reports that denylisted accounts can still enter the new variant during high rollout percentages.",
+    "error_logs": [
+      "rollout-guard: blocked-user received new variant during a 100% rollout drill"
+    ],
+    "reproduction_steps": [
+      "Run the router unit tests from the repository root.",
+      "Inspect src/feature_router/router.py."
+    ],
+    "relevant_files": [
+      "src/feature_router/router.py",
+      "tests/test_router.py"
+    ],
+    "notes": "Allowlist users must still be able to force the new variant."
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "feature-router-denylist-precedence-001",
+    "description": "The router applies the denylist too late in the decision flow.",
+    "target_files": [
+      "src/feature_router/router.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_router.FeatureRouterTests::test_denylist_overrides_percent_rollout"
+    ],
+    "pass_to_pass": [
+      "test_router.FeatureRouterTests::test_allowlist_user_gets_new_even_with_zero_rollout",
+      "test_router.FeatureRouterTests::test_regular_user_stays_control_when_rollout_zero"
+    ],
+    "required_tests": [
+      "test_router.FeatureRouterTests::test_denylist_overrides_percent_rollout",
+      "test_router.FeatureRouterTests::test_allowlist_user_gets_new_even_with_zero_rollout",
+      "test_router.FeatureRouterTests::test_regular_user_stays_control_when_rollout_zero"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 20,
+    "max_agent_steps": 25,
+    "notes": "Preserve the allowlist fast path while fixing the rollout safety issue."
+  },
+  "metadata": {
+    "difficulty": "medium",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "code-repair",
+      "feature-flags",
+      "rollout-safety"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "build_success",
+    "test_success",
+    "FAIL_TO_PASS",
+    "PASS_TO_PASS"
+  ],
+  "tags": [
+    "local",
+    "code",
+    "feature-flags"
+  ],
+  "notes": "Local rollout guard precedence task.",
+  "gold_patch_path": "patches/feature_router_denylist_fix.diff"
+}

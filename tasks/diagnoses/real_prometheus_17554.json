@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_17554",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a scrape target's context is cancelled, the scrape loop goroutine can hang indefinitely instead of exiting, and over time these stuck goroutines accumulate after target reloads.",
+    "root_cause": "In the scrape metrics-collection module, the per-iteration routine that performs a scrape and reports its outcome reports both the forced-error case and the ordinary scrape-error case by sending the error onto the loop's error-reporting channel. These sends are plain blocking sends that wait until something reads from the channel. When the loop's context has been cancelled, no consumer is reading from that channel, so the send has no receiver and blocks forever. Crucially, the send does not also wait on the loop's cancellation signal, so even though the context is done, cancellation cannot unblock the send. The goroutine is therefore wedged on the channel send and never returns, leaking on every cancelled target.",
+    "remediation": "Make the error-reporting sends in the scrape-and-report routine cancellation-aware: the send must be performed alongside a wait on the loop's cancellation signal so that, if the context is already cancelled or becomes cancelled while no receiver is present, the routine abandons the send and returns instead of blocking forever. Equivalently, guard the send so that a cancelled loop never commits to an unreceivable send.",
+    "evidence": [
+      "goroutine leak detected: scrape loop failed to exit on context cancellation",
+      "goroutine stuck on chan send in scrape.(*scrapeLoop).scrapeAndReport",
+      "Run: go test -run '^TestScrapeLoopRun_ContextCancelTerminatesBlockedSend$' ./scrape"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a scrape target's context is cancelled, the scrape loop goroutine can hang indefinitely instead of exiting, and over time these stuck goroutines accumulate after target reloads.",
+    "root_cause": "The outer scrape loop manager that owns each target's lifecycle fails to propagate the stop request to the running loop. When a target is reloaded or removed, the manager closes or replaces the target's controller but does not actually fire the per-loop cancellation signal before waiting on the loop to finish. Because the cancellation signal is never triggered, the loop's main select never observes a done condition and the routine keeps cycling and reporting, which is why goroutines pile up after every reload. The defect is in how the manager wires up and triggers each loop's shutdown, not in the reporting path itself.",
+    "remediation": "Fix the target-lifecycle manager so that on reload or removal it deterministically fires each loop's cancellation signal before awaiting termination, and ensure the stop sequence both cancels and then joins the goroutine so no loop is left running against a stale controller.",
+    "evidence": [
+      "goroutine leak detected: scrape loop failed to exit on context cancellation",
+      "scrape loop goroutine count steadily increasing after target reloads",
+      "Run: go test -run '^TestScrapeLoopRun_ContextCancelTerminatesBlockedSend$' ./scrape"
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because the symptom (goroutines accumulating after reloads) genuinely looks like a lifecycle/shutdown-propagation bug, and managers failing to fire cancellation is a common cause of leaks. It misleads an engineer into the manager's stop/reload wiring, but the real failure is downstream: the cancellation signal is fired, yet the loop is wedged on an unreceivable error-channel send that never observes that signal."
+}

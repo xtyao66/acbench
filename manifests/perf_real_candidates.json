@@ -1,0 +1,22 @@
+{
+  "name": "perf_real_candidates",
+  "description": "16 candidate real-PR Go perf scenarios (9 codebases) awaiting Volt gold-speedup validation; survivors (speedup>=1.15x, gold applies + tests pass) fold into perf_real_validated.",
+  "scenarios": [
+    {"scenario": "tasks/scenarios/perf/perf_compress_499.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_compress_293.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_fasthttp_1893.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_prometheus_17131.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_prometheus_13782.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_victoriametrics_5721.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_victoriametrics_10468.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_gojson_345.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_sonic_845.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_sonic_789.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_zap_1350.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_zap_1052.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_badger_1173.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_badger_1512.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_grpc_5654.scenario.json"},
+    {"scenario": "tasks/scenarios/perf/perf_grpc_6743.scenario.json"}
+  ]
+}

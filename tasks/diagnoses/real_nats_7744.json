@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_nats_7744",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Under concurrent subscription-interest checks and sublist updates, the server intermittently trips the race detector and can observe inconsistent interest state.",
+    "root_cause": "In the generic sublist source file, the routine that checks whether any interest begins within a given subject prefix walks the shared subject tree while holding no synchronization. Every routine that adds or removes a subscription mutates that same shared tree, and the sublist exposes a reader/writer lock intended to guard all tree access. Because the interest-prefix lookup reads the root node and descends the tree without first taking the shared (reader) side of that lock, a concurrent add or remove can be mutating tree nodes at the exact moment the lookup reads them. The result is an unsynchronized read racing with a write to the same node, which the race detector reports and which can also yield a torn or stale view of the interest state.",
+    "remediation": "Make the interest-prefix lookup acquire the sublist's shared read lock before it begins traversing the tree and release it once traversal is complete, so the read is serialized against concurrent add/remove writers the same way the other read paths already are.",
+    "evidence": [
+      "WARNING: DATA RACE",
+      "Read at 0x00c000123abc by goroutine 12 in HasInterestStartingIn",
+      "Previous write at 0x00c000123abc by goroutine 8 in Insert"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Under concurrent subscription-interest checks and sublist updates, the server intermittently trips the race detector and can observe inconsistent interest state.",
+    "root_cause": "The add and remove routines mutate the shared subject tree under only the exclusive (writer) lock, but they update interior node bookkeeping in a non-atomic, multi-step sequence: a node's child map and its level pointers are rewritten in separate statements without publishing the new node state behind a memory barrier. When the writer briefly leaves an interior node in a half-updated state, a reader descending the tree can observe the dangling pointer before the second statement completes, which is what the detector flags as a read racing a write. The defect therefore lives in the mutation routines' update ordering, not in the lookup path.",
+    "remediation": "Reorder the node-mutation logic in the add and remove routines so that each interior node is fully constructed before it is linked into the tree, and publish the updated node pointer as a single atomic store so descending readers never see a partially built node.",
+    "evidence": [
+      "WARNING: DATA RACE",
+      "Read at 0x00c000123abc by goroutine 12 in HasInterestStartingIn",
+      "Previous write at 0x00c000123abc by goroutine 8 in Insert"
+    ]
+  },
+  "wrong_rationale": "It is plausible because the race report does name the add routine as the conflicting writer, so blaming the writer's node-update ordering looks natural; but it misdirects effort to the mutation path when the true defect is the lookup path reading the tree entirely outside the lock, so reworking the writers' ordering would leave the unsynchronized read in place and the race would persist."
+}

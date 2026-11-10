@@ -1,0 +1,115 @@
+{
+ "scenario_id": "real_nats_7735",
+ "title": "A JetStream stream create request containing a null entry in its sources array crashes the server instead of returnin...",
+ "mode": "combined",
+ "service": {
+  "application": "nats",
+  "service": "server",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_nats_7735"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/nats-io/nats-server",
+  "base_commit": "1541ae2c330d",
+  "pr_url": "https://github.com/nats-io/nats-server/pull/7735",
+  "license_note": "Real upstream nats PR #7735; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "A JetStream stream create request containing a null entry in its sources array crashes the server instead of returning a validation error.",
+  "instructions": "Fix the defect in the server package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestJetStreamSourceConfigValidation$' ./server"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "server.TestJetStreamSourceConfigValidation"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "server.TestJetStreamSourceConfigValidation"
+  ],
+  "forbidden_paths": [
+   "server/jetstream_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "nats-7735",
+  "description": "checkStreamCfg dereferences a nil *StreamSource entry in cfg.Sources when calling isValidName(src.Name), causing a nil pointer panic instead of rejecting the config.",
+  "target_files": [
+   "server/stream.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "nats-7735",
+  "description": "A crafted JetStream stream create request with a null element in the sources array crashes the server with a nil pointer panic.",
+  "detection_keywords": [
+   "panic",
+   "nil pointer dereference",
+   "server crash on stream create",
+   "JetStream API request triggers crash",
+   "request times out after server restart"
+  ],
+  "localization_keywords": [
+   "stream.go",
+   "checkStreamCfg source validation loop",
+   "iterating cfg.Sources",
+   "isValidName(src.Name) on a nil source",
+   "nil *StreamSource entry in Sources slice",
+   "missing nil check before dereferencing src",
+   "null entry deserialized from sources array"
+  ],
+  "repair_keywords": [
+   "add src == nil guard before isValidName",
+   "reject nil source with NewJSSourceInvalidStreamNameError",
+   "return sourced stream name is invalid for null sources",
+   "validate source entries are non-nil in checkStreamCfg"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Sending a JetStream stream create request whose sources array contains a null element crashes the server instead of returning a validation error.",
+  "error_logs": [
+   "panic: runtime error: invalid memory address or nil pointer dereference",
+   "[signal SIGSEGV: segmentation violation code=0x1 addr=0x0]",
+   "server/stream.go: (*Server).checkStreamCfg while iterating cfg.Sources"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestJetStreamSourceConfigValidation$' ./server"
+  ],
+  "relevant_files": [
+   "server/stream.go",
+   "server/jetstream_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "nats"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

@@ -1,0 +1,39 @@
+{
+  "scenario_id": "combined_notify_fanout_lookup_latency",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The notification fan-out service breaches its tail-latency target whenever a request carries many events, with end-to-end time growing in direct proportion to the number of events in the batch.",
+    "root_cause": "Inside the request-handling routine of the fan-out module (the handler under the notification fan-out source folder), the code walks the incoming events one at a time and, for each event, issues a separate round-trip to the profile datastore to fetch the recipient or sender details it needs. Because these reads happen sequentially within the request path, the total time is the per-read cost multiplied by the number of events, so latency rises linearly with batch size. The datastore itself is healthy; the problem is the access pattern of doing one lookup per event rather than fetching everything the batch needs in a single grouped read.",
+    "remediation": "Collect the set of identifiers the whole batch needs first, then satisfy them with one consolidated datastore call (a single grouped or bulk read) and serve each event from that in-memory result, eliminating the per-event round-trips so the request cost no longer scales with batch size.",
+    "evidence": [
+      "alerts/notify_fanout_latency.log: p99 latency on the fan-out path scales linearly with batch size",
+      "traces: each request shows a long sequential fan of profile-store reads, one span per event",
+      "issue: latency scales linearly with the number of events in a request"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "The notification fan-out service breaches its tail-latency target whenever a request carries many events, with end-to-end time growing in direct proportion to the number of events in the batch.",
+    "root_cause": "The slowdown comes from the datastore client layer rather than the fan-out handler. The client opens a fresh connection (and re-runs the authentication handshake) for every read it performs, so a batch with many events pays the connection-setup cost once per event. With no pooling or keep-alive in place, each lookup blocks on a brand-new socket and handshake, which is why per-request time tracks the event count almost exactly. The reads are individually cheap once connected, so the visible cost is dominated by repeated connection establishment.",
+    "remediation": "Introduce a shared, reusable connection pool with keep-alive in the datastore client so the handshake is paid once and amortized across all reads in a request, removing the per-event connection overhead that makes latency scale with batch size.",
+    "evidence": [
+      "alerts/notify_fanout_latency.log: p99 latency on the fan-out path scales linearly with batch size",
+      "traces: each request shows a long sequential fan of profile-store reads, one span per event",
+      "issue: latency scales linearly with the number of events in a request"
+    ]
+  },
+  "wrong_rationale": "Per-connection setup overhead would also produce latency that scales linearly with the number of reads, and the trace's repeated read spans are consistent with it, so a connection-pooling fix looks reasonable. It is wrong because the real cause is the handler issuing one lookup per event instead of a single batched read; adding pooling speeds each round-trip but leaves the N-reads-per-batch pattern intact, so latency still grows with batch size."
+}

@@ -1,0 +1,172 @@
+{
+  "scenario_id": "combined_settlement_rollup_aggregate_cpu",
+  "title": "Settlement-rollup CPU incident with vectorized-aggregate repair",
+  "mode": "combined",
+  "service": {
+    "application": "settlement-rollup",
+    "service": "settlement-batch",
+    "deployment": "local",
+    "repository_path": "services/fixtures/settlement_rollup_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "settlement-rollup-aggregate-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a nightly settlement-rollup CPU incident and replace the elementwise aggregation loop with a single bulk reduction.",
+    "instructions": "Use the incident and profile clues to localize the CPU hotspot, apply a performance repair that collapses the per-element aggregation into one bulk pass, and keep every settlement-rollup test green. This scenario is graded on a REAL measured speedup: a perf driver (bench.py) times the rollup hot path, and the candidate must roll up the same figures meaningfully faster.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the rolled-up total, line count, and mean must be unchanged, and the aggregation must run as a single bulk reduction rather than a per-line-item Python loop."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the nightly settlement-batch job blew its completion-time SLO. The rollup step burns CPU in proportion to the number of line items in a merchant's batch; the largest merchants settle tens of millions of line items and the job now runs long. A profile shows almost all of the time inside a single tight numeric-aggregation pass.",
+    "error_logs": [
+      "alerts/settlement_batch_cpu.log: rollup CPU time scales linearly with line-item count; large-merchant batches dominate job wall-clock",
+      "profile: ~95% of samples sit in one hot frame doing an elementwise add over a large list, one Python-level iteration per line item; the interpreter per-element overhead dominates, not the arithmetic"
+    ],
+    "reproduction_steps": [
+      "Inspect the settlement-rollup fixture and run the unit tests.",
+      "Run the perf driver (PYTHONPATH=src python bench.py) to observe the rollup hot path at scale.",
+      "Use the profile clues to localize the aggregation hotspot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/settlement_rollup/",
+      "tests/test_rollup.py",
+      "bench.py"
+    ],
+    "notes": "The incident points at HOW the batch total is accumulated, not at the size of the batch nor at the per-item arithmetic being expensive. The work is a plain reduction over a flat numeric list."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-settlement-rollup-aggregate-cpu-incident-001",
+    "description": "Synthetic nightly settlement-rollup CPU incident tied to the settlement_rollup fixture.",
+    "detection_keywords": [
+      "completion-time SLO breach",
+      "rollup CPU scales linearly with line-item count",
+      "large-merchant batches dominate job wall-clock"
+    ],
+    "localization_keywords": [
+      "hot numeric-aggregation pass in the batch job",
+      "elementwise accumulation over a large list",
+      "one Python-level iteration per line item",
+      "per-element interpreter overhead dominates the reduction",
+      "settlement-batch"
+    ],
+    "repair_keywords": [
+      "replace the elementwise loop with one bulk builtin",
+      "vectorize the aggregation into a single reduction",
+      "use sum over the list instead of a manual accumulator",
+      "reduce the batch in one C-level pass",
+      "eliminate the per-element Python addition",
+      "collapse the running-total loop into a bulk sum",
+      "single-pass aggregate"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "settlement-rollup-elementwise-aggregate-001",
+    "description": "The rollup accumulates the batch total with a hand-written elementwise Python loop, paying per-element interpreter overhead for every line item instead of performing one bulk reduction.",
+    "target_files": [
+      "src/settlement_rollup/rollup.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "measured_performance",
+    "fail_to_pass": [],
+    "pass_to_pass": [
+      "test_rollup.SettlementRollupTests::test_rolls_up_gross_total_count_and_mean",
+      "test_rollup.SettlementRollupTests::test_empty_batch_settles_to_zero",
+      "test_rollup.SettlementRollupTests::test_single_line_item",
+      "test_rollup.SettlementRollupTests::test_refunds_reduce_total",
+      "test_rollup.SettlementRollupTests::test_total_is_order_independent",
+      "test_rollup.SettlementRollupTests::test_all_line_items_counted"
+    ],
+    "required_tests": [
+      "test_rollup.SettlementRollupTests::test_rolls_up_gross_total_count_and_mean",
+      "test_rollup.SettlementRollupTests::test_empty_batch_settles_to_zero",
+      "test_rollup.SettlementRollupTests::test_single_line_item",
+      "test_rollup.SettlementRollupTests::test_refunds_reduce_total",
+      "test_rollup.SettlementRollupTests::test_total_is_order_independent",
+      "test_rollup.SettlementRollupTests::test_all_line_items_counted"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "performance": {
+    "graded_by": "volt/measure_perf.py",
+    "bench": "bench.py",
+    "metric": "speedup = baseline_min_elapsed_s / candidate_min_elapsed_s",
+    "reps": 7,
+    "warmup": 2,
+    "aggregation": "min",
+    "correctness_gate": "pytest tests/ must pass on the candidate before timing",
+    "target_speedup_range": "2-5x",
+    "measured_speedup": 4.0,
+    "measured_baseline_ms": 686.0,
+    "measured_candidate_ms": 168.0,
+    "workload": "roll_up_settlement over an 80,000,000-line single-merchant batch; data built outside the timed region",
+    "notes": "Measured on the reference host with the ACBench venv (CPython 3.14). Absolute timings are hardware-dependent; the speedup ratio is the graded quantity."
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a measured performance fix that replaces an elementwise Python aggregation loop with a single bulk reduction (vectorized_aggregate)."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success",
+    "measured_speedup"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "measured_performance",
+    "vectorized_aggregate"
+  ],
+  "notes": "Combined nightly settlement-rollup CPU incident and vectorized-aggregate repair task, graded on a real measured speedup (2-5x target).",
+  "gold_patch_path": "patches/settlement_rollup_vectorized_aggregate_fix.diff"
+}

@@ -1,0 +1,113 @@
+{
+  "scenario_id": "github_ops_openclaw_upgrade_missing_bundled_entry",
+  "title": "OpenClaw upgrade should not fail on a missing bundled channel setup entry",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "bundled-plugin-bootstrap",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.7",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62867",
+    "snapshot_key": "openclaw-62867-synthetic-ops-v1",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #62867."
+  },
+  "task": {
+    "summary": "Diagnose why an upgrade leaves the CLI dead on startup because a bundled plugin entry path is missing.",
+    "instructions": "Use the incident evidence to confirm that the upgrade regression is coming from a missing bundled entry path, localize it to packaged plugin bootstrap assets, and propose an ops-level repair plan that restores startup.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "After upgrading to 2026.4.7, every OpenClaw command fails because the Telegram bundled setup entry cannot be found.",
+    "error_logs": [
+      "Failed to read config: bundled plugin entry './src/channel.setup.js' failed to open",
+      "ENOENT: no such file or directory, lstat .../dist/extensions/telegram/src/channel.setup.js"
+    ],
+    "reproduction_steps": [
+      "Inspect the startup error and packaged entry path evidence.",
+      "Explain what packaging or bootstrap path must be corrected so the CLI can start again."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models an upgrade and packaging regression, not a code-patch task."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62867-upgrade-missing-bundled-entry",
+    "description": "Synthetic startup regression derived from the GitHub issue.",
+    "detection_keywords": [
+      "Failed to read config",
+      "channel.setup.js",
+      "ENOENT"
+    ],
+    "localization_keywords": [
+      "bundled plugin entry",
+      "telegram",
+      "setup-entry",
+      "dist asset"
+    ],
+    "repair_keywords": [
+      "restore bundled entry",
+      "fix setup-entry path",
+      "package missing file",
+      "publish correct dist asset",
+      "bootstrap path"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "upgrade-regression",
+      "packaging"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #62867."
+}

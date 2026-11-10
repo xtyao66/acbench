@@ -1,0 +1,39 @@
+{
+  "scenario_id": "real_prometheus_15141",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Under concurrent ingestion and querying, queries against the time-series index intermittently return fewer or wrong series, and the race detector reports a data race in the index postings.",
+    "root_cause": "When a new series reference is appended for a label and it happens to arrive out of order relative to the existing references for that label, the add routine in the index postings module repairs the ordering by re-sorting the per-label reference list directly within the array that already backs the stored list. Readers on the lookup path are handed a view onto that same underlying array and continue to iterate over it without copying. Because the repair step rearranges elements inside the live backing storage that those concurrent readers still hold, the reader sees half-reordered, overwritten contents, producing corrupted, missing, or shuffled results and tripping the race detector. The defect is the shared mutation of memory that is simultaneously owned by a reader and rewritten in place by the writer's ordering repair.",
+    "remediation": "Ensure the ordering repair on an out-of-order insert never mutates an array that lookup callers may already be reading. The add path should operate on a fresh copy (or otherwise publish a new list atomically) so that previously returned reader views remain stable, rather than sorting the existing backing storage in place.",
+    "evidence": [
+      "WARNING: DATA RACE in tsdb/index postings",
+      "query returned fewer series than expected for {__name__=\"test\"}",
+      "intermittent inconsistent results when ingesting out-of-order series IDs during reads"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Under concurrent ingestion and querying, queries against the time-series index intermittently return fewer or wrong series, and the race detector reports a data race in the index postings.",
+    "root_cause": "The lookup path that serves queries reads the per-label reference lists without taking the shared structure's read lock, while the ingestion path holds only a write lock during inserts. Because the reader acquires no lock at all, it can observe the map of label-to-reference-list mid-update: a concurrent insert can grow or rehash the container and swap the slot for a label while the reader is still resolving it, so the reader either misses recently added series or follows a stale entry. The fix belongs in the lock discipline of the lookup routine, which fails to coordinate with the writer through the existing reader-writer lock.",
+    "remediation": "Make the query lookup routine acquire the structure's read lock for the full duration of resolving a label to its reference list, so it cannot run concurrently with an insert that is mutating the container, restoring proper reader-writer coordination.",
+    "evidence": [
+      "WARNING: DATA RACE in tsdb/index postings",
+      "query returned fewer series than expected for {__name__=\"test\"}",
+      "intermittent inconsistent results when ingesting out-of-order series IDs during reads"
+    ]
+  },
+  "wrong_rationale": "A missing or insufficiently scoped read lock on the lookup path is the textbook explanation for a data race plus intermittent missing series, so an engineer would naturally tighten locking on the query side; but the real defect is that the writer mutates a backing array still referenced by an already-returned reader view, so adding locks around the lookup will not prevent the in-place sort from corrupting memory a reader is holding after the lock is released."
+}

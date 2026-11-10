@@ -1,0 +1,151 @@
+{
+  "scenario_id": "combined_sorted_lookup_bisect_routing_latency",
+  "title": "Request tier-routing latency incident with binary-search repair",
+  "mode": "combined",
+  "service": {
+    "application": "tier-router",
+    "service": "request-routing",
+    "deployment": "local",
+    "repository_path": "services/fixtures/sorted_lookup_bisect_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "tier-router-routing-latency-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a request-routing latency incident and replace the per-query linear scan of a sorted table with a binary search.",
+    "instructions": "Use the incident clues to localize the hotspot whose per-request cost grows with the size of the lookup table, apply a performance repair, and restore all routing tests including the probe-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; routing a batch must resolve each key with a number of table probes that grows logarithmically with the table size, not linearly."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the request-routing tier saturated CPU and p99 latency climbed once the tier table was expanded. Per-request routing time scales with the number of configured tiers: every added tier makes each lookup proportionally slower, so the larger table pushed the workers over budget.",
+    "error_logs": [
+      "alerts/routing_latency.log: mean time-per-request rises in direct proportion to the number of configured tier boundaries; the table doubled in size and per-request cost roughly doubled",
+      "profile: a single key-to-tier lookup dominates the flame graph; it walks a long, already-ordered list element by element, and its cost rises linearly with the number of entries"
+    ],
+    "reproduction_steps": [
+      "Inspect the routing fixture and run the unit tests.",
+      "Use the profile clues to localize the linear-in-table-size hotspot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/tier_router/",
+      "tests/test_handler.py"
+    ],
+    "notes": "The incident points at HOW each request is matched against the ordered tier table, not at the number of requests. The table is already kept in sorted order."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-tier-router-routing-latency-incident-001",
+    "description": "Synthetic request-routing latency incident tied to the sorted_lookup_bisect fixture.",
+    "detection_keywords": [
+      "CPU saturation and rising p99 latency",
+      "per-request cost grows with the number of table entries",
+      "doubling the table size roughly doubles per-request work"
+    ],
+    "localization_keywords": [
+      "linear scan of an already-sorted lookup table on every query",
+      "per-query cost grows linearly with the size of the table",
+      "front-to-back element-by-element walk over an ordered list",
+      "request-routing key-to-tier match"
+    ],
+    "repair_keywords": [
+      "replace the linear scan with a binary search over the sorted table",
+      "use bisect to locate the matching interval",
+      "exploit the sorted order to halve the search space each step",
+      "make the per-query lookup O(log n) instead of O(n)",
+      "logarithmic interval lookup on a sorted boundary list"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "tier-router-linear-sorted-lookup-001",
+    "description": "The routing lookup scans the sorted tier-boundary list front-to-back on every query, making each key-to-tier match O(n) in the table size instead of O(log n).",
+    "target_files": [
+      "src/tier_router/tier_table.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_handler.TierRoutingTests::test_lookup_probes_scale_sublinearly"
+    ],
+    "pass_to_pass": [
+      "test_handler.TierRoutingTests::test_routes_keys_to_correct_tiers_in_order",
+      "test_handler.TierRoutingTests::test_boundary_keys_use_half_open_intervals",
+      "test_handler.TierRoutingTests::test_empty_requests_returns_empty",
+      "test_handler.TierRoutingTests::test_empty_table_routes_everything_to_tier_zero",
+      "test_handler.TierRoutingTests::test_preserves_input_order_and_does_not_mutate_inputs"
+    ],
+    "required_tests": [
+      "test_handler.TierRoutingTests::test_lookup_probes_scale_sublinearly",
+      "test_handler.TierRoutingTests::test_routes_keys_to_correct_tiers_in_order",
+      "test_handler.TierRoutingTests::test_boundary_keys_use_half_open_intervals",
+      "test_handler.TierRoutingTests::test_empty_requests_returns_empty",
+      "test_handler.TierRoutingTests::test_empty_table_routes_everything_to_tier_zero",
+      "test_handler.TierRoutingTests::test_preserves_input_order_and_does_not_mutate_inputs"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that replaces a per-query linear scan of a sorted table with a binary search (bisect)."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "sorted_lookup_bisect"
+  ],
+  "notes": "Combined request-routing latency incident and binary-search repair task. Measured-performance scenario: bench.py drives the key-to-tier hot path and the grader times baseline vs gold on real hardware (target speedup 10-50x).",
+  "gold_patch_path": "patches/sorted_lookup_bisect_binary_search_fix.diff"
+}

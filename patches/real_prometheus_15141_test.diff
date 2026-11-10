@@ -1,0 +1,27 @@
+diff --git a/tsdb/index/postings_test.go b/tsdb/index/postings_test.go
+index b41fb54e653..8ee9b99434a 100644
+--- a/tsdb/index/postings_test.go
++++ b/tsdb/index/postings_test.go
+@@ -1507,3 +1507,22 @@ func TestMemPostings_PostingsForLabelMatchingHonorsContextCancel(t *testing.T) {
+ 	require.Error(t, p.Err())
+ 	require.Equal(t, failAfter+1, ctx.Count()) // Plus one for the Err() call that puts the error in the result.
+ }
++
++func TestMemPostings_Unordered_Add_Get(t *testing.T) {
++	mp := NewMemPostings()
++	for ref := storage.SeriesRef(1); ref < 8; ref += 2 {
++		// First, add next series.
++		next := ref + 1
++		mp.Add(next, labels.FromStrings(labels.MetricName, "test", "series", strconv.Itoa(int(next))))
++		nextPostings := mp.Get(labels.MetricName, "test")
++
++		// Now add current ref.
++		mp.Add(ref, labels.FromStrings(labels.MetricName, "test", "series", strconv.Itoa(int(ref))))
++
++		// Next postings should still reference the next series.
++		nextExpanded, err := ExpandPostings(nextPostings)
++		require.NoError(t, err)
++		require.Len(t, nextExpanded, int(ref))
++		require.Equal(t, next, nextExpanded[len(nextExpanded)-1])
++	}
++}

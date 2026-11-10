@@ -1,0 +1,150 @@
+{
+  "scenario_id": "combined_group_metrics_rollup_cpu",
+  "title": "Billing roll-up CPU incident with dict-grouping repair",
+  "mode": "combined",
+  "service": {
+    "application": "group-metrics",
+    "service": "billing-rollup",
+    "deployment": "local",
+    "repository_path": "services/fixtures/group_by_dict_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "group-metrics-rollup-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a nightly billing roll-up CPU incident and remove the quadratic group-by scan.",
+    "instructions": "Use the incident clues to localize the super-linear hotspot, apply a performance repair, and restore all roll-up tests including the behavioral grouping guards.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the aggregator must roll a batch up into one group per key with work that grows linearly with the batch size."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the nightly billing roll-up job saturated CPU and overran its window whenever the platform's tenant count grew. Processing time grows super-linearly: doubling the batch size (and the number of distinct tenants in it) roughly quadruples the roll-up work.",
+    "error_logs": [
+      "alerts/billing_rollup_cpu.log: roll-up CPU time per batch grows faster than batch size; doubling the batch ~4x the work",
+      "profile: a single roll-up step dominates the flame graph, its cost rising with the square of the batch size as more distinct keys accumulate"
+    ],
+    "reproduction_steps": [
+      "Inspect the billing roll-up fixture and run the unit tests.",
+      "Use the profile clues to localize the super-linear hotspot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/group_metrics/",
+      "tests/test_aggregator.py"
+    ],
+    "notes": "The incident points at how the job locates which existing group each record belongs to, not at the number of records itself."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-group-metrics-rollup-cpu-incident-001",
+    "description": "Synthetic nightly-billing roll-up CPU incident tied to the group_by_dict fixture.",
+    "detection_keywords": [
+      "CPU saturation",
+      "processing time grows super-linearly with batch size",
+      "doubling the batch quadruples the work"
+    ],
+    "localization_keywords": [
+      "quadratic hotspot in the request path",
+      "repeated linear search to find the matching group inside a loop",
+      "cost grows with the square of the input as distinct keys accumulate",
+      "scan over a growing list of already-created groups",
+      "billing-rollup"
+    ],
+    "repair_keywords": [
+      "index the groups by key in a dict or defaultdict",
+      "replace the linear group search with a hash lookup",
+      "make finding a record's group O(1)",
+      "group by key with a dictionary instead of scanning a list",
+      "eliminate the per-record linear scan over the growing group list",
+      "O(n^2) to O(n)",
+      "constant-time group lookup"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "group-metrics-quadratic-groupby-001",
+    "description": "The roll-up finds each record's group by linearly scanning the list of groups built so far, making the group-by O(n^2) (O(n*g)) instead of O(n).",
+    "target_files": [
+      "src/group_metrics/aggregator.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_aggregator.AggregateByTenantTests::test_groups_counts_and_sums_in_first_seen_order"
+    ],
+    "pass_to_pass": [
+      "test_aggregator.AggregateByTenantTests::test_empty_batch_yields_no_groups",
+      "test_aggregator.AggregateByTenantTests::test_every_record_contributes_exactly_once",
+      "test_aggregator.AggregateByTenantTests::test_single_record_per_tenant_preserves_order"
+    ],
+    "required_tests": [
+      "test_aggregator.AggregateByTenantTests::test_groups_counts_and_sums_in_first_seen_order",
+      "test_aggregator.AggregateByTenantTests::test_empty_batch_yields_no_groups",
+      "test_aggregator.AggregateByTenantTests::test_every_record_contributes_exactly_once",
+      "test_aggregator.AggregateByTenantTests::test_single_record_per_tenant_preserves_order"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that replaces a quadratic per-record group search with a dict-based group lookup."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "group_by_dict"
+  ],
+  "notes": "Combined nightly-billing roll-up CPU incident and dict-grouping repair task.",
+  "gold_patch_path": "patches/group_by_dict_defaultdict_fix.diff"
+}

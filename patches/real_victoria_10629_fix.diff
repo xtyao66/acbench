@@ -1,0 +1,13 @@
+diff --git a/lib/encoding/int.go b/lib/encoding/int.go
+index 794d1776092c5..7a745d1075ee6 100644
+--- a/lib/encoding/int.go
++++ b/lib/encoding/int.go
+@@ -517,7 +517,7 @@ func UnmarshalBytes(src []byte) ([]byte, int) {
+ 	if nSize <= 0 {
+ 		return nil, 0
+ 	}
+-	if uint64(nSize)+n > uint64(len(src)) {
++	if n > uint64(len(src)-nSize) {
+ 		return nil, 0
+ 	}
+ 	start := nSize

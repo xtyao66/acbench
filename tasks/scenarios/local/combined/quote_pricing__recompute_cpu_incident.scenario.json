@@ -1,0 +1,147 @@
+{
+  "scenario_id": "combined_quote_pricing_recompute_cpu",
+  "title": "Quote pricing CPU incident with memoized rate-model repair",
+  "mode": "combined",
+  "service": {
+    "application": "quote-pricing",
+    "service": "quote-pricing-engine",
+    "deployment": "local",
+    "repository_path": "services/fixtures/quote_pricing_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "quote-pricing-recompute-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a quote pricing CPU-saturation incident and eliminate the redundant recomputation of a pure rate model.",
+    "instructions": "Use the incident clues to localize the CPU bottleneck, apply a performance repair, and restore all pricing tests including the call-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; the engine must invoke the expensive rate model at most once per unique zone."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the quote pricing service saturated CPU and blew its p99 latency SLO whenever orders carried many line items. CPU time scales with the number of line items even though most lines repeat the same shipping zone.",
+    "error_logs": [
+      "alerts/quote_pricing_cpu.log: pricing worker CPU scales linearly with line-item count, not with the number of distinct zones",
+      "profile: a single hot pure function dominates samples, called once per line item with heavily repeated arguments"
+    ],
+    "reproduction_steps": [
+      "Inspect the quote pricing fixture and run the unit tests.",
+      "Use the profile clues to localize the bottleneck before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/quote_pricing/",
+      "tests/test_engine.py"
+    ],
+    "notes": "The incident points at repeated work inside the request path, not at the rate model itself being slow per call."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-quote-pricing-cpu-incident-001",
+    "description": "Synthetic quote pricing CPU-saturation incident tied to the quote_pricing fixture.",
+    "detection_keywords": [
+      "p99 latency",
+      "CPU scales with line-item count",
+      "linear slowdown"
+    ],
+    "localization_keywords": [
+      "redundant recomputation",
+      "pure function recomputed per item",
+      "repeated arguments in the request path",
+      "quote-pricing-engine"
+    ],
+    "repair_keywords": [
+      "memoize the pure function",
+      "cache results per distinct input",
+      "compute once per unique key",
+      "reuse the cached value for repeats",
+      "eliminate the per-item recomputation",
+      "lookup table keyed by input",
+      "cached computation"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "quote-pricing-missing-memoization-001",
+    "description": "The pricing engine recomputes the pure rate model once per line item instead of memoizing the result per unique zone.",
+    "target_files": [
+      "src/quote_pricing/engine.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_engine.QuotePricingTests::test_memoizes_rate_computation_per_unique_zone"
+    ],
+    "pass_to_pass": [
+      "test_engine.QuotePricingTests::test_prices_each_line_in_order",
+      "test_engine.QuotePricingTests::test_applies_surcharge_totals_and_unknown_zone_fallback"
+    ],
+    "required_tests": [
+      "test_engine.QuotePricingTests::test_memoizes_rate_computation_per_unique_zone",
+      "test_engine.QuotePricingTests::test_prices_each_line_in_order",
+      "test_engine.QuotePricingTests::test_applies_surcharge_totals_and_unknown_zone_fallback"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that memoizes a pure computation per unique input."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "missing_memoization"
+  ],
+  "notes": "Combined quote pricing CPU incident and memoized rate-model repair task.",
+  "gold_patch_path": "patches/quote_pricing_memoize_rates_fix.diff"
+}

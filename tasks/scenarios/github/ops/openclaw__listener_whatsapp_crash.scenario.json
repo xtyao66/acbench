@@ -1,0 +1,112 @@
+{
+  "scenario_id": "github_ops_openclaw_listener_whatsapp_crash",
+  "title": "OpenClaw should not crash on WhatsApp events that arrive after the active run ends",
+  "mode": "ops_only",
+  "service": {
+    "application": "openclaw",
+    "service": "listener-runtime",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "github",
+    "repo_url": "https://github.com/openclaw/openclaw",
+    "base_commit": "v2026.4.5",
+    "issue_url": "https://github.com/openclaw/openclaw/issues/62840",
+    "snapshot_key": "openclaw-62840-synthetic-ops-v2",
+    "license_note": "Synthetic ops scenario derived from openclaw/openclaw issue #62840."
+  },
+  "task": {
+    "summary": "Diagnose why late WhatsApp listener events crash the gateway after the active run ends.",
+    "instructions": "Use the incident evidence to confirm the late-listener crash, localize it to missing run guards around listener processing, and propose an ops-level repair plan that skips late events safely.",
+    "acceptance_notes": "This GitHub-derived ops scenario is synthetic and graded behaviorally."
+  },
+  "visible_context": {
+    "issue_text": "A WhatsApp message arriving after the previous run finishes can crash the gateway with `Agent listener invoked outside active run`.",
+    "error_logs": [
+      "Unhandled promise rejection: Error: Agent listener invoked outside active run",
+      "gateway exited with status=1 after a new WhatsApp event arrived"
+    ],
+    "reproduction_steps": [
+      "Inspect the late-event crash evidence.",
+      "Explain where the listener path should guard and skip post-run updates."
+    ],
+    "relevant_files": [],
+    "notes": "This fixture models listener-runtime incident triage rather than a code fixture."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "openclaw-62840-whatsapp-listener-crash-ops",
+    "description": "Synthetic listener-runtime incident derived from the GitHub issue.",
+    "detection_keywords": [
+      "outside active run",
+      "whatsapp",
+      "gateway crash"
+    ],
+    "localization_keywords": [
+      "listener",
+      "active run",
+      "missing guard",
+      "late events"
+    ],
+    "repair_keywords": [
+      "skip late events",
+      "guard active run",
+      "return instead of throw",
+      "listener cleanup"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "listener-runtime",
+      "whatsapp"
+    ],
+    "source_benchmark": "openclaw-github"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "github",
+    "openclaw",
+    "ops"
+  ],
+  "notes": "Synthetic ops scenario derived from openclaw/openclaw issue #62840."
+}

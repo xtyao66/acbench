@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_listener_cron_run",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Triggering a cron-driven job can hang and then crash the gateway with an error reporting that the agent listener was invoked outside an active run, because late listener updates arrive after the run has already finished.",
+    "root_cause": "Inside the listener runtime's agent-loop module, the routine that receives streamed listener events assumes a run is still active whenever output arrives. When a cron-triggered job produces late output after the active run has already concluded and been torn down, the event-handling path reacts to the absence of an active run by raising an error rather than treating it as an expected, late-arrival condition. Because this error propagates out of the asynchronous event handler with nothing to catch it, it surfaces as an unhandled rejection and brings down the gateway. The guard meant to protect against post-run events is therefore behaving as a hard failure instead of a safe no-op.",
+    "remediation": "Adjust the late-listener guard in the agent-loop event-handling routine so that, when an event arrives and there is no longer an active run, the event is recognized as a stale late arrival and silently discarded instead of raising. Healthy events that arrive while a run is still active must continue to be processed normally.",
+    "evidence": [
+      "openclaw cron run triggers Unhandled promise rejection",
+      "late stderr/update reached Agent.processEvents after the run ended",
+      "Running `openclaw cron run <job-id>` can hang and then crash the gateway with `Agent listener invoked outside active run`"
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Triggering a cron-driven job can hang and then crash the gateway with an error reporting that the agent listener was invoked outside an active run, because late listener updates arrive after the run has already finished.",
+    "root_cause": "The crash is caused by the run-teardown sequence failing to detach the listener subscription when a cron-triggered run completes. Because the scheduled runner finalizes the run before unsubscribing the streamed-output callbacks, the runtime leaves a dangling listener registered against a run handle that has already been cleared. Subsequent output from the still-attached stream is delivered to a listener whose run context no longer exists, which is what produces the outside-active-run condition. The defect is in the lifecycle and cleanup ordering of the cron runner, where unsubscribe should happen before the active-run state is released.",
+    "remediation": "Fix the run-completion lifecycle so the cron runner deterministically unsubscribes and closes all streamed-output channels before clearing the active-run state, ensuring no listener can remain attached after teardown and thus no late output can ever reach a stale listener.",
+    "evidence": [
+      "openclaw cron run triggers Unhandled promise rejection",
+      "late stderr/update reached Agent.processEvents after the run ended",
+      "Running `openclaw cron run <job-id>` can hang and then crash the gateway with `Agent listener invoked outside active run`"
+    ]
+  },
+  "wrong_rationale": "It is plausible because eliminating the dangling subscription at teardown would superficially prevent late events from arriving, and lifecycle ordering bugs are a common real cause of post-run callbacks; however it misdirects the engineer to the cron runner's cleanup path rather than the listener guard itself, and even with perfect unsubscribe ordering an in-flight or buffered late event can still reach the handler, so the true fix of making the guard drop stale events safely is missed."
+}

@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_listener_telegram_reply_loss",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Telegram replies are silently lost: when a listener event arrives after a run has already ended, the gateway crashes during delivery recovery and the reply is dropped.",
+    "root_cause": "In the agent loop module of the listener runtime, the guard that handles listener callbacks fired after the active run has concluded reacts to that out-of-window condition by raising an error rather than quietly ignoring it. Because the late callback path treats a post-run invocation as a hard fault, an event that lands after the run boundary throws while delivery is still being recovered, which aborts the gateway mid-recovery and prevents the pending reply from being sent.",
+    "remediation": "Change the post-run listener guard so that a callback arriving after the active run has ended is detected and safely skipped (a no-op) instead of being treated as an error, while leaving the normal in-run callback path intact so legitimate events still execute.",
+    "evidence": [
+      "Unhandled promise rejection: Error: Agent listener invoked outside active run",
+      "delivery recovery failed after gateway restart and the reply was dropped",
+      "Telegram replies are silently lost because a late listener event after the run ends crashes the gateway before delivery finishes."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "Telegram replies are silently lost: when a listener event arrives after a run has already ended, the gateway crashes during delivery recovery and the reply is dropped.",
+    "root_cause": "The crash stems from the delivery recovery routine that runs after the gateway restarts: it attempts to resume sending the pending Telegram reply without first re-establishing the run context it depends on. Because the recovery path fires its continuation against a run record that has already been torn down, the reply send operates on stale state and fails, so the message is never delivered. The failure surfaces as the listener complaining about being outside an active run because recovery drives the listener without rehydrating the run it belongs to.",
+    "remediation": "Make the delivery recovery path rebuild or re-attach the prior run context before replaying the pending reply, so that after a gateway restart the recovery resumes against a valid, restored run rather than torn-down state.",
+    "evidence": [
+      "Unhandled promise rejection: Error: Agent listener invoked outside active run",
+      "delivery recovery failed after gateway restart and the reply was dropped",
+      "Telegram replies are silently lost because a late listener event after the run ends crashes the gateway before delivery finishes."
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because the logs explicitly mention delivery recovery failing after a gateway restart, so blaming missing run-context restoration in the recovery path looks like a natural reading; it misleads an engineer into adding session/run rehydration logic in the recovery routine instead of fixing the listener guard, which actually needs to skip post-run callbacks rather than raise."
+}

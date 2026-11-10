@@ -1,0 +1,150 @@
+{
+  "scenario_id": "combined_topk_select_candidate_cpu",
+  "title": "Candidate-selection CPU incident with top-k heap repair",
+  "mode": "combined",
+  "service": {
+    "application": "topk-select",
+    "service": "candidate-selection",
+    "deployment": "local",
+    "repository_path": "services/fixtures/topk_select_buggy"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "topk-select-candidate-cpu-incident-v1",
+    "license_note": "ACBench local combined fixture."
+  },
+  "task": {
+    "summary": "Triage a candidate-selection CPU incident and stop fully ordering the pool when only the top few are needed.",
+    "instructions": "Use the incident clues to localize the ranking hot spot, apply a performance repair, and restore all selection tests including the comparison-count oracle.",
+    "acceptance_notes": "Both the ops and code requirements must pass; selecting the top k from a pool of n must cost comparisons that grow like n log k, not n log n."
+  },
+  "visible_context": {
+    "issue_text": "On-call opened an incident after the candidate-selection workers saturated CPU and blew their p99 latency SLO whenever the candidate pool grew. Each request only needs the best handful of candidates, yet per-request CPU time tracks the size of the whole pool: doubling the pool roughly doubles the work even though the requested result size never changes.",
+    "error_logs": [
+      "alerts/candidate_cpu.log: worker CPU time per request rises with the size of the candidate pool, not with the small number of results actually returned",
+      "profile: a single comparison-ordering frame dominates the flame graph; it fully orders the entire pool on every request while only the first few entries are ever read"
+    ],
+    "reproduction_steps": [
+      "Inspect the candidate-selection fixture and run the unit tests.",
+      "Use the profile clues to localize the ranking hot spot before applying a code fix."
+    ],
+    "relevant_files": [
+      "src/topk_select/",
+      "tests/test_handler.py"
+    ],
+    "notes": "The incident points at how much of the pool the worker orders to answer a request, not at the scoring of individual candidates."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-topk-select-candidate-cpu-incident-001",
+    "description": "Synthetic candidate-selection CPU incident tied to the topk_select fixture.",
+    "detection_keywords": [
+      "CPU saturation",
+      "p99 latency SLO breach",
+      "per-request cost grows with the candidate pool size"
+    ],
+    "localization_keywords": [
+      "ordering hot spot in the request path",
+      "the whole pool is ordered to return only a few results",
+      "work scales with pool size, not with the requested result count",
+      "candidate-selection"
+    ],
+    "repair_keywords": [
+      "select the top results with a bounded heap instead of a full ordering",
+      "use a partial selection that keeps only the best k",
+      "avoid ordering the entire pool when only a few results are needed",
+      "reduce the ordering cost from n log n to n log k",
+      "stop ranking elements that can never make the result",
+      "bound the per-request work by the requested result size"
+    ]
+  },
+  "code_fault": {
+    "source": "acbench",
+    "defect_id": "topk-select-full-sort-for-topk-001",
+    "description": "The selection handler fully orders the entire candidate pool and then keeps only the first k, making each request O(n log n) in the pool size instead of O(n log k).",
+    "target_files": [
+      "src/topk_select/handler.py"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {
+      "PYTHONPATH": "src"
+    },
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [
+      "python -m compileall src"
+    ],
+    "test_cmds": [
+      "$env:PYTHONPATH='src'; python -m unittest discover -s tests -p \"test_*.py\" -v"
+    ],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true,
+    "require_build_success": true,
+    "require_test_success": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [
+      "test_handler.TopKSelectTests::test_topk_selection_scales_sublinearly_in_pool"
+    ],
+    "pass_to_pass": [
+      "test_handler.TopKSelectTests::test_selects_best_k_in_rank_order",
+      "test_handler.TopKSelectTests::test_ties_broken_by_ascending_id",
+      "test_handler.TopKSelectTests::test_returns_exactly_min_k_and_len",
+      "test_handler.TopKSelectTests::test_empty_and_nonpositive_k"
+    ],
+    "required_tests": [
+      "test_handler.TopKSelectTests::test_topk_selection_scales_sublinearly_in_pool",
+      "test_handler.TopKSelectTests::test_selects_best_k_in_rank_order",
+      "test_handler.TopKSelectTests::test_ties_broken_by_ascending_id",
+      "test_handler.TopKSelectTests::test_returns_exactly_min_k_and_len",
+      "test_handler.TopKSelectTests::test_empty_and_nonpositive_k"
+    ],
+    "forbidden_paths": [
+      "tests/"
+    ],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 25,
+    "max_agent_steps": 30,
+    "notes": "This task expects incident localization followed by a performance fix that replaces a full sort of the candidate pool with a bounded top-k heap selection."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "python",
+    "framework": "unittest",
+    "categories": [
+      "combined",
+      "performance",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM",
+    "build_success",
+    "test_success"
+  ],
+  "tags": [
+    "local",
+    "combined",
+    "performance",
+    "topk_heap"
+  ],
+  "notes": "Combined candidate-selection CPU incident and top-k heap repair task. Measured-performance scenario: bench.py drives the hot path and the grader gates on correctness then times baseline vs candidate, taking the min over repeats (speedup = base_min/cand_min).",
+  "gold_patch_path": "patches/topk_select_heap_nlargest_fix.diff"
+}

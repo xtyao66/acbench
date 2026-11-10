@@ -1,0 +1,12 @@
+diff --git a/table/iterator.go b/table/iterator.go
+index 815449983..f46ac7472 100644
+--- a/table/iterator.go
++++ b/table/iterator.go
+@@ -174,7 +174,6 @@ type Iterator struct {
+ func (t *Table) NewIterator(opt int) *Iterator {
+ 	t.IncrRef() // Important.
+ 	ti := &Iterator{t: t, opt: opt}
+-	ti.next()
+ 	return ti
+ }
+

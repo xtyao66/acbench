@@ -1,0 +1,25 @@
+diff --git a/src/feature_scorer/scorer.py b/src/feature_scorer/scorer.py
+index e2c799c..8e52c33 100644
+--- a/src/feature_scorer/scorer.py
++++ b/src/feature_scorer/scorer.py
+@@ -33,14 +33,14 @@ def score_batch(
+     n_cols = len(cohort[0])
+     n_rows = len(cohort)
+ 
++    # Hoisted loop-invariant: the per-column mean and standard deviation of the
++    # reference cohort depend only on the cohort, not on any applicant, so they
++    # are computed exactly once before the scoring loop instead of being
++    # recomputed for every applicant.
++    means, stds = stats.column_stats(cohort)
++
+     scores: list[float] = []
+     for applicant in applicants:
+-        # Loop-invariant computation recomputed every iteration: the per-column
+-        # mean and standard deviation of the reference cohort depend only on the
+-        # cohort, not on ``applicant``. Computing them here walks the entire
+-        # reference matrix once per applicant -- pure redundant work.
+-        means, stds = stats.column_stats(cohort)
+-
+         # z-score term: normalize each applicant feature against the cohort.
+         z_term = 0.0
+         for value, mean, std in zip(applicant, means, stds):

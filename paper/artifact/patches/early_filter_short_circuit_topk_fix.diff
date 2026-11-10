@@ -1,0 +1,96 @@
+diff --git a/src/early_filter/ranker.py b/src/early_filter/ranker.py
+index 66d402a..a35ad70 100644
+--- a/src/early_filter/ranker.py
++++ b/src/early_filter/ranker.py
+@@ -9,14 +9,16 @@ A candidate is eligible only when it is active, belongs to the requested
+ check; computing the relevance score (see ``scoring.score_candidate``) is the
+ expensive per-candidate work.
+ 
+-The implementation below materialises a fully-scored intermediate list for
+-*every* candidate up front and only afterwards drops the ineligible ones and
+-slices the top-K. That means the expensive score is paid even for candidates
+-that an eligibility check would have rejected for free.
++The implementation below filters eligibility *first* and short-circuits: the
++expensive relevance score is only ever computed for candidates that survive the
++cheap eligibility predicate, and a bounded heap keeps the running top-K instead
++of materialising and fully sorting every eligible candidate.
+ """
+ 
+ from __future__ import annotations
+ 
++import heapq
++
+ from early_filter.scoring import score_candidate
+ 
+ 
+@@ -33,29 +35,56 @@ def rank_top_k(
+     broken by ascending ``doc_id`` so the ordering is fully deterministic.
+     """
+ 
+-    # Step 1: score EVERY candidate, building a fully-materialised intermediate
+-    # list of (candidate, score) pairs -- including candidates that are not even
+-    # eligible. The expensive ``score_candidate`` call runs for all of them.
+-    scored: list[tuple[dict, float]] = []
+-    for candidate in candidates:
+-        score = score_candidate(candidate, query_terms)
+-        scored.append((candidate, score))
++    if top_k <= 0:
++        return []
++
++    # Bounded min-heap of the best-so-far eligible candidates. Each entry sorts
++    # by (score, -doc_id-rank) so the *worst* kept candidate is at the top and
++    # can be evicted cheaply. We negate the doc-id ordering inside the heap so
++    # that, at equal score, the lexicographically *larger* doc_id is the one
++    # evicted first -- matching the "ties broken by ascending doc_id" contract.
++    heap: list[tuple[float, _RevStr, dict]] = []
+ 
+-    # Step 2: now drop the ineligible candidates from the materialised list.
+-    eligible: list[tuple[dict, float]] = []
+-    for candidate, score in scored:
++    for candidate in candidates:
++        # Cheap eligibility predicate FIRST -- short-circuit before paying for
++        # the expensive relevance score. Ineligible candidates cost almost
++        # nothing instead of a full document scan.
+         if not candidate["active"]:
+             continue
+         if candidate["locale"] != locale:
+             continue
+         if candidate["doc_id"] in blocked:
+             continue
+-        eligible.append((candidate, score))
+ 
+-    # Step 3: fully sort the entire eligible list, then slice the top-K.
+-    eligible.sort(key=lambda pair: (-pair[1], pair[0]["doc_id"]))
++        score = score_candidate(candidate, query_terms)
++        entry = (score, _RevStr(candidate["doc_id"]), candidate)
++        if len(heap) < top_k:
++            heapq.heappush(heap, entry)
++        elif entry > heap[0]:
++            heapq.heapreplace(heap, entry)
+ 
++    ordered = sorted(heap, key=lambda e: (-e[0], e[1].value))
+     return [
+         {"doc_id": candidate["doc_id"], "score": score}
+-        for candidate, score in eligible[:top_k]
++        for score, _rid, candidate in ordered
+     ]
++
++
++class _RevStr:
++    """Wraps a string so heap ordering treats larger strings as "smaller".
++
++    Used as the heap tie-breaker: at equal score the candidate with the
++    lexicographically larger doc_id compares as the minimum and is evicted
++    first, preserving the ascending-doc_id tie-break of the public contract.
++    """
++
++    __slots__ = ("value",)
++
++    def __init__(self, value: str) -> None:
++        self.value = value
++
++    def __lt__(self, other: "_RevStr") -> bool:
++        return self.value > other.value
++
++    def __eq__(self, other: object) -> bool:
++        return isinstance(other, _RevStr) and self.value == other.value

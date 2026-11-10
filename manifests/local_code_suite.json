@@ -1,0 +1,14 @@
+{
+  "name": "acbench-local-code-suite",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/local/code/billing_pricing__bundle_discount_threshold.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/code/feature_router__denylist_precedence.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/local/code/maintenance_window__overnight_rollover.scenario.json"
+    }
+  ]
+}

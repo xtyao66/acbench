@@ -1,0 +1,39 @@
+{
+  "scenario_id": "github_combined_openclaw_plugin_schema_cycle",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a plugin's schema contains a reference that loops back on itself, gateway startup aborts and the affected plugins fail to load with a stack-overflow style error reported during schema validation.",
+    "root_cause": "The schema-validation routine in the schema module walks the schema definition by following each reference pointer and recursing into the referenced node. Because the traversal keeps no record of which schema nodes it has already entered, a definition that points back at an ancestor (directly or through a chain) makes the walk re-enter the same nodes endlessly. The recursion never reaches a stopping condition, so the call stack grows without bound until the runtime exhausts it and throws the stack-overflow error. Acyclic schemas terminate normally only because they happen never to revisit a node, which is why the failure surfaces specifically for plugins whose schemas are self-referential.",
+    "remediation": "Make the traversal cycle-aware: track the set of schema nodes already being visited along the current path, and when a reference points back to a node already in progress, stop descending into it (treat it as already handled) instead of recursing again. This bounds the recursion while leaving the result unchanged for schemas that contain no loops.",
+    "evidence": [
+      "Issue text: gateway startup can crash with a maximum-call-stack-exceeded error when plugin schemas contain circular definitions.",
+      "Error logs show two plugins failing to load, each with a range error indicating the maximum call stack size was exceeded.",
+      "Reproduction points at the schema module's validation source as the place to inspect."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "When a plugin's schema contains a reference that loops back on itself, gateway startup aborts and the affected plugins fail to load with a stack-overflow style error reported during schema validation.",
+    "root_cause": "The reference-resolution step is the culprit: when the validator encounters a pointer to another part of the schema, it dereferences that pointer by substituting the target definition inline before continuing. For a self-referential definition this inlining expands the referenced fragment into itself over and over, so the in-memory schema balloons during the pre-validation expansion phase and the resolver runs out of stack while building the fully-expanded document. The fix therefore belongs in how references are dereferenced and cached, not in the later validation walk, because the explosion happens while the schema is still being assembled.",
+    "remediation": "Change the reference-resolution layer to resolve pointers lazily and to memoize each resolved target so a given fragment is expanded at most once, returning a shared handle on subsequent encounters rather than re-expanding it. This prevents the document from inflating during assembly.",
+    "evidence": [
+      "Issue text: gateway startup can crash with a maximum-call-stack-exceeded error when plugin schemas contain circular definitions.",
+      "Error logs show two plugins failing to load, each with a range error indicating the maximum call stack size was exceeded.",
+      "Reproduction points at the schema module's validation source as the place to inspect."
+    ]
+  },
+  "wrong_rationale": "It is plausible because an eager, caching reference-resolver would indeed be a classic source of unbounded expansion on cyclic schemas, and a stack-overflow during startup fits that story. It misleads by sending the engineer to build a dereferencing/memoization layer, when the real defect is simply that the validation traversal itself lacks a record of nodes already visited along the current path."
+}

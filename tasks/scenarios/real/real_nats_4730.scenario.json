@@ -1,0 +1,115 @@
+{
+ "scenario_id": "real_nats_4730",
+ "title": "Expanding a JWT user-permission template that references a non-existent tag panics with an out-of-range slice access ...",
+ "mode": "combined",
+ "service": {
+  "application": "nats",
+  "service": "server",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_nats_4730"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/nats-io/nats-server",
+  "base_commit": "5c3ddf3ca0e2",
+  "pr_url": "https://github.com/nats-io/nats-server/pull/4730",
+  "license_note": "Real upstream nats PR #4730; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "Expanding a JWT user-permission template that references a non-existent tag panics with an out-of-range slice access instead of returning an error.",
+  "instructions": "Fix the defect in the server package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestJwtTemplateGoodTagAfterBadTag$' ./server"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "server.TestJwtTemplateGoodTagAfterBadTag"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "server.TestJwtTemplateGoodTagAfterBadTag"
+  ],
+  "forbidden_paths": [
+   "server/jwt_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "nats-4730",
+  "description": "processUserPermissionsTemplate reads valueList[0] without checking the slice length, so an empty cartesian-product value list (produced when a template references a missing tag) triggers an index-out-of-range panic.",
+  "target_files": [
+   "server/auth.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "nats-4730",
+  "description": "Processing a JWT user-permission template that mixes a non-existent tag with a valid tag crashes the server with an index out of range panic.",
+  "detection_keywords": [
+   "panic",
+   "index out of range",
+   "server crash",
+   "JWT template expansion fails",
+   "goroutine panic during user authorization"
+  ],
+  "localization_keywords": [
+   "auth.go",
+   "processUserPermissionsTemplate",
+   "tag template expansion",
+   "nArrayCartesianProduct produces empty value list",
+   "valueList[0] accessed without length check",
+   "missing tag yields empty token substitution",
+   "token == _EMPTY_ branch"
+  ],
+  "repair_keywords": [
+   "guard valueList[0] with len(valueList) > 0",
+   "check slice length before indexing",
+   "skip substitution when no tag values remain",
+   "fall through to else when value list is empty"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "A scoped user JWT whose permission template references a tag that does not exist (followed by a valid tag) causes the server to panic while expanding the template instead of rejecting the template with an error.",
+  "error_logs": [
+   "panic: runtime error: index out of range [0] with length 0",
+   "server/auth.go: processUserPermissionsTemplate",
+   "authorization failed: panic recovered while expanding JWT permission template"
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestJwtTemplateGoodTagAfterBadTag$' ./server"
+  ],
+  "relevant_files": [
+   "server/auth.go",
+   "server/jwt_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "nats"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

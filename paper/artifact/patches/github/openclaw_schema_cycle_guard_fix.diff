@@ -1,0 +1,32 @@
+--- a/src/openclaw_schema_validation/schema.py
++++ b/src/openclaw_schema_validation/schema.py
+@@ -7,19 +7,26 @@ from typing import Any
+ 
+ 
+ def collect_leaf_fields(
+     schema: dict[str, Any],
+     definitions: dict[str, dict[str, Any]] | None = None,
++    _visited_refs: set[str] | None = None,
+ ) -> list[str]:
+     """Collect leaf field names from a JSON schema tree."""
+ 
+     definitions = definitions or schema.get("$defs", {})
++    visited_refs = set() if _visited_refs is None else _visited_refs
+     leaf_fields: list[str] = []
+     for key, value in schema.get("properties", {}).items():
+         if "$ref" in value:
+             ref_name = value["$ref"].split("/")[-1]
+-            leaf_fields.extend(collect_leaf_fields(definitions[ref_name], definitions))
++            if ref_name in visited_refs:
++                continue
++            visited_refs.add(ref_name)
++            leaf_fields.extend(
++                collect_leaf_fields(definitions[ref_name], definitions, visited_refs)
++            )
+             continue
+         if value.get("type") == "object":
+-            leaf_fields.extend(collect_leaf_fields(value, definitions))
++            leaf_fields.extend(collect_leaf_fields(value, definitions, visited_refs))
+             continue
+         leaf_fields.append(key)
+     return leaf_fields

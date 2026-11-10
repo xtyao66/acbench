@@ -1,0 +1,14 @@
+{
+  "name": "github-openclaw-smoke",
+  "scenarios": [
+    {
+      "scenario": "tasks/scenarios/github/code/openclaw__pairing_state_array_persistence.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/ops/openclaw__docker_healthcheck_false_unhealthy.scenario.json"
+    },
+    {
+      "scenario": "tasks/scenarios/github/combined/openclaw__completion_process_leak_incident.scenario.json"
+    }
+  ]
+}

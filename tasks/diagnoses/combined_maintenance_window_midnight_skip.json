@@ -1,0 +1,39 @@
+{
+  "scenario_id": "combined_maintenance_window_midnight_skip",
+  "authored_from": [
+    "issue_text",
+    "error_logs",
+    "reproduction_steps",
+    "task",
+    "symptom_keywords",
+    "root_cause_material"
+  ],
+  "authoring_note": "Re-authored from pre-fix briefing only (no fix diff). gold=function/module-level root cause without naming fix constructs; wrong=plausible-but-incorrect, different mechanism.",
+  "gold": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "After midnight, the scheduler stops treating an overnight maintenance window as active, so a time like half past midnight is judged to be outside a window that runs from late evening through the early hours, and late-evening times are also misclassified.",
+    "root_cause": "In the maintenance window module's active-time check, the routine that decides whether a moment falls inside a window assumes the start of the window is always earlier in the day than the end of the window. It evaluates membership as a single same-day span, requiring the moment to be at or after the start and at or before the end at the same time. This works for an ordinary daytime window, but it breaks for a window that wraps past midnight, because for such a window the end-of-day boundary is numerically smaller than the start. With same-day logic, no moment can satisfy both conditions for a wrapping window, so both the late-evening portion before midnight and the early-morning portion after midnight are wrongly reported as outside the window. The code never distinguishes the wrap-around case from the ordinary case.",
+    "remediation": "Detect when a window crosses midnight (its end boundary is earlier in the day than its start boundary) and evaluate membership with wrap-around semantics for that case: a moment is inside if it is at or after the start, or at or before the end. Keep the existing same-day comparison for non-wrapping windows so daytime behavior is unaffected.",
+    "evidence": [
+      "scheduler trace: 00:30 marked outside 23:00-02:00 maintenance window",
+      "incident notes: late-evening times near 23:15 are also misclassified",
+      "Jobs resumed incorrectly after midnight because the scheduler stopped treating the overnight maintenance window as active."
+    ]
+  },
+  "wrong": {
+    "detected": true,
+    "localized": true,
+    "repaired": true,
+    "summary": "After midnight, the scheduler stops treating an overnight maintenance window as active, so a time like half past midnight is judged to be outside a window that runs from late evening through the early hours, and late-evening times are also misclassified.",
+    "root_cause": "The failure stems from how the current moment and the window boundaries are normalized before they are compared. The comparison is performed against a wall-clock representation that is anchored to the calendar day on which the check runs, but the window boundaries are derived relative to a different reference day. As a result, once the clock rolls over into a new calendar day, the moment being tested and the stored boundaries no longer share the same day anchor, so an off-by-one-day offset creeps in and the moment lands outside the intended interval. The defect therefore lives in the date-anchoring and timestamp-construction step that feeds the comparison, not in the comparison operator itself.",
+    "remediation": "Normalize both the moment under test and the two window boundaries onto a common reference day before comparing them, so that crossing into a new calendar day does not introduce a day-level offset. Recompute the boundary timestamps relative to the same anchor used for the current moment.",
+    "evidence": [
+      "scheduler trace: 00:30 marked outside 23:00-02:00 maintenance window",
+      "incident notes: late-evening times near 23:15 are also misclassified",
+      "Jobs resumed incorrectly after midnight because the scheduler stopped treating the overnight maintenance window as active."
+    ]
+  },
+  "wrong_rationale": "The wrong diagnosis is plausible because midnight bugs are very commonly date-rollover or timezone/day-anchoring problems, and the symptom (\"breaks after midnight\") fits that story; however the true defect is purely in the time-of-day membership logic not handling a window that wraps past midnight, so fixing date anchoring would leave the wrap-around comparison broken and the late-evening misclassification unexplained."
+}

@@ -1,0 +1,116 @@
+{
+ "scenario_id": "real_prometheus_18382",
+ "title": "Parsing a protobuf SUMMARY metric that has no quantiles panics with an out-of-range slice index when Next() is called...",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "textparse",
+  "deployment": "local",
+  "repository_path": "/volt/realrepos/real_prometheus_18382"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "5b1d22e2ce97",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/18382",
+  "license_note": "Real upstream prometheus PR #18382; ACBench task derived from its regression test + fix."
+ },
+ "task": {
+  "summary": "Parsing a protobuf SUMMARY metric that has no quantiles panics with an out-of-range slice index when Next() is called without a preceding Series() call.",
+  "instructions": "Fix the defect in the textparse package so the failing regression test passes without modifying any test.",
+  "acceptance_notes": "FAIL_TO_PASS must pass; do not edit *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -json -count=1 -run '^TestProtobufParseSummaryNoQuantilesNoPanic$' ./model/textparse"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "behavioral",
+  "fail_to_pass": [
+   "textparse.TestProtobufParseSummaryNoQuantilesNoPanic"
+  ],
+  "pass_to_pass": [],
+  "required_tests": [
+   "textparse.TestProtobufParseSummaryNoQuantilesNoPanic"
+  ],
+  "forbidden_paths": [
+   "model/textparse/protobufparse_test.go"
+  ],
+  "allow_alternative_fixes": true
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": true,
+  "require_build_success": false,
+  "require_test_success": false
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-18382",
+  "description": "getMagicLabel() indexes the summary quantile slice at p.fieldPos without bounds-checking, so a SUMMARY with no quantiles causes an out-of-range slice access and panic.",
+  "target_files": [
+   "model/textparse/protobufparse.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-18382",
+  "description": "Scraping a protobuf SUMMARY with no quantile entries crashes the parser with an index-out-of-range panic.",
+  "detection_keywords": [
+   "panic",
+   "index out of range",
+   "runtime panic during scrape",
+   "parser crash on summary metric",
+   "goroutine aborted parsing"
+  ],
+  "localization_keywords": [
+   "protobufparse.go",
+   "getMagicLabel function",
+   "MetricType_SUMMARY branch",
+   "GetSummary().GetQuantile() slice",
+   "qq[p.fieldPos] unchecked index",
+   "fieldPos exceeds quantile count",
+   "summary with empty quantile list",
+   "Next called without Series"
+  ],
+  "repair_keywords": [
+   "bounds-check p.fieldPos against len(qq)",
+   "return early when no quantiles remain",
+   "set fieldsDone before indexing",
+   "guard against empty quantile slice"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Prometheus crashes while parsing a protobuf summary metric that has a sample_count and sample_sum but no quantiles; the parser hits an index-out-of-range panic mid-scrape.",
+  "error_logs": [
+   "panic: runtime error: index out of range [0] with length 0",
+   "model/textparse.(*ProtobufParser).getMagicLabel(...)",
+   "scrape failed: parser aborted on metric \"no_quantile_summary\""
+  ],
+  "reproduction_steps": [
+   "Run: go test -run '^TestProtobufParseSummaryNoQuantilesNoPanic$' ./model/textparse"
+  ],
+  "relevant_files": [
+   "model/textparse/protobufparse.go",
+   "model/textparse/protobufparse_test.go"
+  ],
+  "notes": "Real upstream regression; diagnosis injected as upstream ops context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gotest",
+  "categories": [
+   "combined",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-incident-pr"
+ }
+}

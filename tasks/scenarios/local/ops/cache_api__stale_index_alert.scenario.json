@@ -1,0 +1,107 @@
+{
+  "scenario_id": "ops_only_cache_api_stale_index",
+  "title": "Cache API stale index incident",
+  "mode": "ops_only",
+  "service": {
+    "application": "cache-api",
+    "service": "search-index",
+    "deployment": "local"
+  },
+  "source": {
+    "type": "local_fixture",
+    "snapshot_key": "cache-api-stale-index-v1",
+    "license_note": "ACBench synthetic local ops fixture."
+  },
+  "task": {
+    "summary": "Detect, localize, and repair a stale search index incident.",
+    "instructions": "Use the incident evidence to confirm the fault, localize it to the stale indexing path, and submit a repair conclusion through the ops workflow.",
+    "acceptance_notes": "This local ops task is synthetic but uses realistic incident framing."
+  },
+  "visible_context": {
+    "issue_text": "Search results are stale after successful writes, especially right after bulk catalog updates.",
+    "error_logs": [
+      "indexer: reindex job completed but cache-api still serves version=184 for documents updated to version=185",
+      "search-index: freshness lag exceeded SLO by 11 minutes"
+    ],
+    "reproduction_steps": [
+      "Inspect the incident notes and search-index traces.",
+      "Decide whether the stale path has been detected and localized."
+    ],
+    "relevant_files": [],
+    "notes": "The benchmark assumes the fault is already present during the incident."
+  },
+  "ops_fault": {
+    "source": "acbench",
+    "problem_id": "local-cache-api-stale-index-001",
+    "description": "Synthetic stale-index incident for local ops validation.",
+    "detection_keywords": [
+      "stale",
+      "freshness lag",
+      "index"
+    ],
+    "localization_keywords": [
+      "indexer",
+      "search-index",
+      "indexing path"
+    ],
+    "repair_keywords": [
+      "reindex",
+      "refresh index",
+      "invalidate cache"
+    ]
+  },
+  "environment": {
+    "setup_cmds": [],
+    "env_vars": {},
+    "working_directory": "",
+    "requires_container": false
+  },
+  "build": {
+    "rebuild_cmds": [],
+    "test_cmds": [],
+    "print_cmds": [],
+    "log_parser": "none"
+  },
+  "success_criteria": {
+    "require_detection": true,
+    "require_localization": true,
+    "require_repair": true
+  },
+  "evaluation": {
+    "strategy": "behavioral",
+    "fail_to_pass": [],
+    "pass_to_pass": [],
+    "required_tests": [],
+    "forbidden_paths": [],
+    "allow_alternative_fixes": true
+  },
+  "constraints": {
+    "allow_network": false,
+    "allow_test_changes": false,
+    "max_runtime_minutes": 15,
+    "max_agent_steps": 15,
+    "notes": "Pure ops scenario."
+  },
+  "metadata": {
+    "difficulty": "hard",
+    "language": "n/a",
+    "framework": "synthetic-ops",
+    "categories": [
+      "ops-only",
+      "caching",
+      "incident-response"
+    ],
+    "source_benchmark": "acbench-local"
+  },
+  "metrics": [
+    "TTD",
+    "TTL",
+    "TTM"
+  ],
+  "tags": [
+    "local",
+    "ops",
+    "cache"
+  ],
+  "notes": "Synthetic local stale-index ops task."
+}

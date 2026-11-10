@@ -1,0 +1,114 @@
+{
+ "scenario_id": "perf_victoriametrics_10468",
+ "title": "lib/storage: faster metricID cache lookup",
+ "mode": "combined",
+ "service": {
+  "application": "victoriametrics",
+  "service": "storage",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_victoriametrics_10468"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/VictoriaMetrics/VictoriaMetrics",
+  "base_commit": "14bc51554b4a3c7598284577be677b523a711aba",
+  "pr_url": "https://github.com/VictoriaMetrics/VictoriaMetrics/pull/10468",
+  "license_note": "Real upstream VictoriaMetrics optimization PR #10468; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up the metricID cache lookup path so Has/Set pick a shard without the per-call fastHashUint64 hashing and dynamic-length slice indirection, without changing cache behavior.",
+  "instructions": "Optimize the lib/storage metricID cache for speed WITHOUT changing behavior. The benchmark BenchmarkMetricIDCache_Has measures the read path; existing TestMetricIDCache tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 -run TestMetricIDCache ./lib/storage"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "lib/storage/metric_id_cache_timing_test.go",
+   "lib/storage/metric_id_cache_test.go",
+   "lib/storage/metric_id_cache_synctest_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "lib/storage",
+   "benchmark": "BenchmarkMetricIDCache_Has",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": true,
+   "gold_speedup": 1.0
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "victoriametrics-10468",
+  "description": "metricIDCache.Has/Set select a shard via fastHashUint64(metricID) % len(c.shards) over a dynamically-sized shard slice, adding hashing and slice-length indirection to a hot cache lookup.",
+  "target_files": [
+   "lib/storage/metric_id_cache.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "victoriametrics-10468",
+  "description": "The metricID cache shard count is a runtime-sized slice and each Has/Set call computes fastHashUint64(metricID) before a modulo over len(shards) on the ingestion lookup path.",
+  "detection_keywords": [
+   "hashing overhead on cache lookup",
+   "dynamic shard slice length lookup",
+   "metricID cache Has on hot path",
+   "shard selection per cache lookup"
+  ],
+  "localization_keywords": [
+   "metric_id_cache.go",
+   "metricIDCache.Has",
+   "metricIDCache.Set",
+   "fastHashUint64(metricID) % len(c.shards)",
+   "shards []metricIDCacheShard"
+  ],
+  "repair_keywords": [
+   "fixed metricIDCacheShardCount constant",
+   "fixed-size shards array",
+   "direct shard index from metricID",
+   "(metricID / 65536) % metricIDCacheShardCount",
+   "drop fastHashUint64 from lookup"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Selecting a shard in the metricID cache on every Has/Set call goes through fastHashUint64 and a modulo over a dynamically-sized shard slice, which adds avoidable work to a hot ingestion lookup path.",
+  "error_logs": [],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkMetricIDCache_Has$' ./lib/storage"
+  ],
+  "relevant_files": [
+   "lib/storage/metric_id_cache.go"
+  ],
+  "notes": "Real upstream optimization PR; no fabricated profile numbers."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "victoriametrics"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}

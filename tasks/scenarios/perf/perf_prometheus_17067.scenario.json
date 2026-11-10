@@ -1,0 +1,119 @@
+{
+ "scenario_id": "perf_prometheus_17067",
+ "title": "PromQL AST String()/Pretty() rendering is slow due to fmt.Sprintf and per-call buffer churn on the hot path",
+ "mode": "combined",
+ "service": {
+  "application": "prometheus",
+  "service": "parser",
+  "deployment": "local",
+  "repository_path": "/volt/perfrepos/perf_prometheus_17067"
+ },
+ "source": {
+  "type": "github",
+  "repo_url": "https://github.com/prometheus/prometheus",
+  "base_commit": "5b153f80a56167a3d969ce3b4e4bf90e944246f0",
+  "pr_url": "https://github.com/prometheus/prometheus/pull/17067",
+  "license_note": "Real upstream prometheus optimization PR #17067; measured-speedup task."
+ },
+ "task": {
+  "summary": "Speed up the PromQL parser's expression-to-string rendering (Expr.String()/ShortString()/Pretty()) without changing the produced output.",
+  "instructions": "Optimize the promql/parser package for speed WITHOUT changing behavior. The benchmark BenchmarkExprString measures it; existing tests must still pass.",
+  "acceptance_notes": "Behavior preserved (go test passes); higher measured speedup is better. Do NOT edit any *_test.go."
+ },
+ "build": {
+  "rebuild_cmds": [],
+  "language": "go",
+  "test_cmds": [
+   "go test -count=1 ./promql/parser"
+  ],
+  "print_cmds": [],
+  "log_parser": "none"
+ },
+ "evaluation": {
+  "strategy": "performance",
+  "fail_to_pass": [],
+  "pass_to_pass": [],
+  "required_tests": [],
+  "forbidden_paths": [
+   "promql/parser/printer_test.go"
+  ],
+  "allow_alternative_fixes": true,
+  "perf": {
+   "pkg": "promql/parser",
+   "benchmark": "BenchmarkExprString",
+   "benchtime": "1s",
+   "reps": 5,
+   "benchmark_preexisting": false,
+   "gold_speedup": 2.13
+  }
+ },
+ "success_criteria": {
+  "require_detection": false,
+  "require_localization": false,
+  "require_repair": false,
+  "require_build_success": false,
+  "require_test_success": true
+ },
+ "code_fault": {
+  "source": "upstream-pr",
+  "defect_id": "prometheus-17067",
+  "description": "Expr.String()/ShortString() build output via fmt.Sprintf and allocate a fresh bytes.Buffer / intermediate strings per node, dominating CPU when rendering large PromQL expressions.",
+  "target_files": [
+   "promql/parser/printer.go",
+   "promql/parser/prettier.go"
+  ]
+ },
+ "ops_fault": {
+  "source": "upstream-pr",
+  "problem_id": "prometheus-17067",
+  "description": "CPU profile of expression rendering shows fmt.Sprintf reflection and repeated buffer/string allocations dominating Expr.String() in promql/parser/printer.go.",
+  "detection_keywords": [
+   "high CPU in String() hot path",
+   "excessive allocations per call",
+   "GC pressure from intermediate strings",
+   "slow ns/op rendering PromQL expressions",
+   "fmt.Sprintf overhead"
+  ],
+  "localization_keywords": [
+   "printer.go",
+   "prettier.go",
+   "Expressions.String loop",
+   "AggregateExpr.String / getAggOpStr",
+   "VectorSelector.String",
+   "joinLabels per-call buffer"
+  ],
+  "repair_keywords": [
+   "replace fmt.Sprintf with bytes.Buffer WriteString",
+   "writeAggOpStr / writeLabels append to shared buffer",
+   "strconv.Quote and strconv.AppendFloat instead of %q/%f",
+   "string concatenation instead of Sprintf",
+   "AvailableBuffer to avoid extra allocation",
+   "fast-path single-element Expressions"
+  ]
+ },
+ "visible_context": {
+  "issue_text": "Rendering large PromQL expressions back to text via Expr.String() is unexpectedly slow and allocation-heavy, showing up in CPU profiles of rule/alert evaluation and API formatting.",
+  "error_logs": [
+   "pprof: 41.2% cpu fmt.Sprintf -> reflect in promql/parser.(*AggregateExpr).String; BenchmarkExprString ~3200 ns/op, 18 allocs/op"
+  ],
+  "reproduction_steps": [
+   "go test -run='^$' -bench='^BenchmarkExprString$' ./promql/parser"
+  ],
+  "relevant_files": [
+   "promql/parser/printer.go",
+   "promql/parser/prettier.go"
+  ],
+  "notes": "Real upstream optimization; profiling diagnosis injected as upstream context."
+ },
+ "metadata": {
+  "difficulty": "medium",
+  "language": "go",
+  "framework": "gobench",
+  "categories": [
+   "perf",
+   "real-pr",
+   "prometheus"
+  ],
+  "source_benchmark": "real-optimization-pr"
+ }
+}
